@@ -1,11 +1,38 @@
+// Update your PropertyCard component with the correct interface
+
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MapPin, TrendingUp, Users, Edit, Trash2, DollarSign, BarChart3, Activity, Shield } from "lucide-react"
-import { Property } from "@shared/schema"
+
+// Use the same interface as your Properties component
+interface FrontendProperty {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  price: string;
+  propertyType: 'residential' | 'commercial' | 'retail';
+  yield: string;
+  ownershipCap: number;
+  status: 'live' | 'upcoming' | 'closed';
+  images: string[];
+  totalInvestment: string;
+  investorCount: number;
+  currentOwnership: string;
+  monthlyRevenue: string;
+  totalRevenue: string;
+  occupancyRate: string;
+  performance: 'excellent' | 'good' | 'stable';
+  lastDividendDate: Date | null;
+  deactivationReason: string | null;
+  deactivatedAt: Date | null;
+  deactivatedBy: string | null;
+  createdAt: Date;
+}
 
 interface PropertyCardProps {
-  property: Property
+  property: FrontendProperty // Changed from Property to FrontendProperty
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
   onDeactivate?: (id: string) => void
@@ -58,7 +85,7 @@ export function PropertyCard({ property, onEdit, onDelete, onDeactivate }: Prope
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <Badge className={`${statusColors[property.status as keyof typeof statusColors]} backdrop-blur-sm`}>
+            <Badge className={`${statusColors[property.status]} backdrop-blur-sm`}>
               {property.status}
             </Badge>
           </div>
@@ -71,7 +98,7 @@ export function PropertyCard({ property, onEdit, onDelete, onDeactivate }: Prope
             {property.title}
           </CardTitle>
           <Badge 
-            className={statusColors[property.status as keyof typeof statusColors]}
+            className={statusColors[property.status]}
             data-testid={`badge-status-${property.id}`}
           >
             {property.status}

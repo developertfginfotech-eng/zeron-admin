@@ -32,6 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   app.post("/api/investors", async (req, res) => {
     try {
       const validatedData = insertInvestorSchema.parse(req.body);

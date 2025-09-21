@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -27,6 +28,7 @@ import MobileDashboard from "@/pages/mobile/dashboard";
 import MobileProperties from "@/pages/mobile/properties";
 import MobilePortfolio from "@/pages/mobile/portfolio";
 import MobileProfile from "@/pages/mobile/profile";
+import LoginPage from "@/pages/login";
 
 function AdminRouter() {
   return (
@@ -58,13 +60,51 @@ function MobileRouter() {
 }
 
 export default function App() {
-  const [location] = useLocation()
-  const isMobile = location.startsWith('/mobile')
+  const [location] = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const isMobile = location.startsWith('/mobile');
+
+  // Check authentication on app load
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    setIsAuthenticated(!!token);
+    setIsLoading(false);
+  }, []);
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light" storageKey="zaron-theme">
+          <LanguageProvider defaultLanguage="en" storageKey="zaron-language">
+            <TooltipProvider>
+              <LoginPage 
+                onLoginSuccess={(data) => {
+                  setIsAuthenticated(true);
+                }}
+              />
+              <Toaster />
+            </TooltipProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+  }
 
   // Custom sidebar width for better content display
   const style = {
-    "--sidebar-width": "20rem",       // 320px for better navigation
-    "--sidebar-width-icon": "4rem",   // default icon width
+    "--sidebar-width": "20rem",
+    "--sidebar-width-icon": "4rem",
   };
 
   return (
@@ -72,50 +112,58 @@ export default function App() {
       <ThemeProvider defaultTheme="light" storageKey="zaron-theme">
         <LanguageProvider defaultLanguage="en" storageKey="zaron-language">
           <TooltipProvider>
-          {isMobile ? (
-            // Mobile Layout for Investors
-            <MobileLayout>
-              <MobileRouter />
-            </MobileLayout>
-          ) : (
-            // Admin Panel Layout
-            <SidebarProvider style={style as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <div className="flex flex-col flex-1">
-                  <header className="flex items-center justify-between p-4 border-b border-sidebar-border/50 glass-card backdrop-blur-xl">
-                    <div className="flex items-center gap-4">
-                      <SidebarTrigger 
-                        className="hover:bg-primary/10 transition-colors duration-300" 
-                        data-testid="button-sidebar-toggle" 
-                      />
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <div className="text-sm font-medium bg-gradient-to-r from-foreground to-primary/80 bg-clip-text text-transparent">
-                          Zaron Admin Panel
+            {isMobile ? (
+              <MobileLayout>
+                <MobileRouter />
+              </MobileLayout>
+            ) : (
+              <SidebarProvider style={style as React.CSSProperties}>
+                <div className="flex h-screen w-full">
+                  <AppSidebar />
+                  <div className="flex flex-col flex-1">
+                    <header className="flex items-center justify-between p-4 border-b border-sidebar-border/50 glass-card backdrop-blur-xl">
+                      <div className="flex items-center gap-4">
+                        <SidebarTrigger 
+                          className="hover:bg-primary/10 transition-colors duration-300" 
+                          data-testid="button-sidebar-toggle" 
+                        />
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                          <div className="text-sm font-medium bg-gradient-to-r from-foreground to-primary/80 bg-clip-text text-transparent">
+                            Zaron Admin Panel
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-xs text-muted-foreground/60">
-                        {new Date().toLocaleDateString('en-US', { 
-                          weekday: 'short', 
-                          year: 'numeric', 
-                          month: 'short', 
-                          day: 'numeric' 
-                        })}
+                      <div className="flex items-center gap-3">
+                        <div className="text-xs text-muted-foreground/60">
+                          {new Date().toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                        <ThemeToggle />
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('userData');
+                            setIsAuthenticated(false);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Logout
+                        </button>
                       </div>
-                      <ThemeToggle />
-                    </div>
-                  </header>
-                  <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-background to-primary/3 modern-scrollbar">
-                    <AdminRouter />
-                  </main>
+                    </header>
+                    <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-background to-primary/3 modern-scrollbar">
+                      <AdminRouter />
+                    </main>
+                  </div>
                 </div>
-              </div>
-            </SidebarProvider>
-          )}
-          <Toaster />
+              </SidebarProvider>
+            )}
+            <Toaster />
           </TooltipProvider>
         </LanguageProvider>
       </ThemeProvider>

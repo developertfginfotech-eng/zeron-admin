@@ -58,6 +58,8 @@ export class ChatWebSocketServer {
         });
       });
 
+      
+
       ws.on('error', (error) => {
         console.error('WebSocket error:', error);
       });
