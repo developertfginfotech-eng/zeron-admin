@@ -1,9 +1,4 @@
-// lib/api.ts - Working configuration for your project
-
-// Simple, direct configuration that works in the browser
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-// Use your environment variable or fallback to localhost
 const API_BASE_URL = isDevelopment ? 'http://localhost:5000' : 'https://your-production-domain.com';
 
 export const API_ENDPOINTS = {
