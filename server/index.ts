@@ -89,6 +89,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { ChatWebSocketServer } from "./websocket";
 
 const app = express();
+const host = process.env.HOST || "0.0.0.0";
+const port = parseInt(process.env.PORT || "5050", 10);
 
 // Middleware to parse JSON and form data
 app.use(express.json());
@@ -150,9 +152,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Start server
-  const port = parseInt(process.env.PORT || "5050", 10);
-  server.listen(port, "127.0.0.1", () => {
-    log(`🚀 Server running at http://127.0.0.1:${port}`);
-  });
+server.listen(port, host, () => {
+  log(`🚀 Server running at http://${host}:${port}`);
+});
+
 })();
