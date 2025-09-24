@@ -1,6 +1,5 @@
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const API_BASE_URL = isDevelopment ? 'http://localhost:5000' : 'http://13.50.13.193:5000';
-
+const API_BASE_URL = 'http://13.50.13.193:5000';
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {

@@ -42,7 +42,7 @@ interface BackendProperty {
     currentValue: number;
   };
   propertyType: 'residential' | 'commercial' | 'retail';
-  status: 'active' | 'fully_funded' | 'closed';
+  status: 'active' | 'upcoming' | 'fully_funded' | 'completed' | 'cancelled' | 'closed';
   investorCount: number;
   fundingProgress: number;
   analytics?: {
@@ -104,7 +104,7 @@ export default function Properties() {
   const [showOTPPage, setShowOTPPage] = useState(false)
   const [otpOperation, setOtpOperation] = useState<{type: string, data: any} | null>(null)
 
-  // Map backend property to frontend format
+  // FIXED: Map backend property to frontend format with correct status handling
   const mapBackendToFrontend = (backendProp: BackendProperty): FrontendProperty => {
     const totalInvestmentAmount = (backendProp.financials.totalValue * (backendProp.fundingProgress || 0)) / 100;
     
@@ -144,6 +144,26 @@ export default function Properties() {
       });
     };
     
+    // FIXED: Comprehensive status mapping function
+    const mapStatus = (backendStatus: string): 'live' | 'upcoming' | 'closed' => {
+      switch (backendStatus.toLowerCase()) {
+        case 'active':
+          return 'live';
+        case 'upcoming':
+          return 'upcoming';
+        case 'fully_funded':
+          return 'upcoming';
+        case 'completed':
+        case 'cancelled':
+        case 'closed':
+        case 'draft':
+          return 'closed';
+        default:
+          console.warn(`Unknown backend status: ${backendStatus}, defaulting to 'closed'`);
+          return 'closed';
+      }
+    };
+    
     return {
       id: backendProp._id,
       title: backendProp.title,
@@ -153,8 +173,7 @@ export default function Properties() {
       propertyType: backendProp.propertyType,
       yield: backendProp.financials.projectedYield.toString(),
       ownershipCap: Math.round(backendProp.fundingProgress || 0),
-      status: backendProp.status === 'active' ? 'live' : 
-              backendProp.status === 'fully_funded' ? 'upcoming' : 'closed',
+      status: mapStatus(backendProp.status), // Use the improved mapping function
       images: processImages(backendProp.images),
       totalInvestment: totalInvestmentAmount.toString(),
       investorCount: backendProp.investorCount || 0,
@@ -172,11 +191,25 @@ export default function Properties() {
     };
   };
 
-  // Map frontend property to backend format for editing
+  // FIXED: Map frontend property to backend format with correct status handling
   const mapFrontendToBackend = (frontendProp: FrontendProperty) => {
     const locationParts = frontendProp.location.split(',');
     const district = locationParts[0]?.trim() || '';
     const city = locationParts[1]?.trim() || 'riyadh';
+    
+    // FIXED: Handle frontend to backend status mapping
+    const mapStatusToBackend = (frontendStatus: string): string => {
+      switch (frontendStatus) {
+        case 'live':
+          return 'active';
+        case 'upcoming':
+          return 'upcoming';
+        case 'closed':
+          return 'closed';
+        default:
+          return 'active';
+      }
+    };
     
     return {
       title: frontendProp.title,
@@ -185,7 +218,7 @@ export default function Properties() {
       location: frontendProp.location,
       price: frontendProp.price,
       yield: frontendProp.yield,
-      status: frontendProp.status,
+      status: mapStatusToBackend(frontendProp.status),
       existingImages: frontendProp.images
     };
   };
@@ -210,8 +243,26 @@ export default function Properties() {
       console.log('Raw backend response:', response);
       
       const backendProperties = response.data.properties || [];
-      const mappedProperties = backendProperties.map(mapBackendToFrontend);
+      console.log('Backend properties count:', backendProperties.length);
       
+      const mappedProperties = backendProperties.map((prop: BackendProperty, index: number) => {
+        console.log(`Mapping property ${index + 1}:`, {
+          title: prop.title,
+          backendStatus: prop.status,
+          _id: prop._id
+        });
+        
+        const mapped = mapBackendToFrontend(prop);
+        console.log(`Mapped to frontend:`, {
+          title: mapped.title,
+          frontendStatus: mapped.status,
+          id: mapped.id
+        });
+        
+        return mapped;
+      });
+      
+      console.log('Final mapped properties:', mappedProperties.length);
       setProperties(mappedProperties);
     } catch (err: any) {
       console.error('Error fetching properties:', err);
@@ -269,7 +320,7 @@ export default function Properties() {
     }
   };
 
-  // Create new property
+  // FIXED: Create new property with correct status mapping
   const createProperty = async (formData: any) => {
     const uploadData = new FormData();
     
@@ -285,7 +336,7 @@ export default function Properties() {
       uploadData.append('otp', formData.otp);
     }
     
-    // Handle status mapping for creation
+    // FIXED: Handle status mapping for creation
     let backendStatus = 'active';
     if (formData.status) {
       switch (formData.status) {
@@ -293,7 +344,7 @@ export default function Properties() {
           backendStatus = 'active';
           break;
         case 'upcoming':
-          backendStatus = 'fully_funded';
+          backendStatus = 'upcoming'; // Fixed: was 'fully_funded'
           break;
         case 'closed':
           backendStatus = 'closed';
@@ -303,6 +354,7 @@ export default function Properties() {
       }
     }
     uploadData.append('status', backendStatus);
+    console.log('Backend status being sent:', backendStatus);
     
     // Parse location
     const locationParts = (formData.location || '').split(',');
@@ -344,7 +396,7 @@ export default function Properties() {
     return response;
   };
 
-  // Update property
+  // FIXED: Update property with correct status mapping
   const updateProperty = async (propertyId: string, formData: any) => {
     const uploadData = new FormData();
     
@@ -360,7 +412,7 @@ export default function Properties() {
       uploadData.append('otp', formData.otp);
     }
     
-    // Handle status mapping from frontend to backend
+    // FIXED: Handle status mapping from frontend to backend
     let backendStatus = 'active';
     if (formData.status) {
       switch (formData.status) {
@@ -368,7 +420,7 @@ export default function Properties() {
           backendStatus = 'active';
           break;
         case 'upcoming':
-          backendStatus = 'fully_funded';
+          backendStatus = 'upcoming'; // Fixed: was 'fully_funded'
           break;
         case 'closed':
           backendStatus = 'closed';
@@ -378,6 +430,7 @@ export default function Properties() {
       }
     }
     uploadData.append('status', backendStatus);
+    console.log('Backend status being sent for update:', backendStatus);
     
     // Parse location
     const locationParts = (formData.location || '').split(',');
@@ -448,16 +501,25 @@ export default function Properties() {
     fetchProperties();
   }, []);
 
-  // Debounced search effect
+  // FIXED: Debounced search effect with correct status mapping
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
       if (searchTerm || statusFilter !== "all") {
         const filters: any = {};
         if (searchTerm) filters.q = searchTerm;
         if (statusFilter !== "all") {
-          if (statusFilter === "live") filters.status = "active";
-          else if (statusFilter === "upcoming") filters.status = "fully_funded";
-          else if (statusFilter === "closed") filters.status = "closed";
+          // Map frontend filter values to backend values
+          switch (statusFilter) {
+            case "live":
+              filters.status = "active";
+              break;
+            case "upcoming":
+              filters.status = "upcoming,fully_funded"; // Handle both backend statuses
+              break;
+            case "closed":
+              filters.status = "closed,completed,cancelled,draft";
+              break;
+          }
         }
         
         if (Object.keys(filters).length > 0) {
@@ -612,17 +674,16 @@ export default function Properties() {
     setDeactivationComment("")
   }
 
-  // UPDATED: Form submit with OTP handling
+  // Form submit with OTP handling
   const handleFormSubmit = async (data: any) => {
     try {
       console.log('Property form submitted:', data);
-      console.log('Backend response:', data); // Debug line
       
       setLoading(true);
       
       if (editingProperty) {
         const response = await updateProperty(editingProperty.id, data);
-        console.log('Update response:', response); // Debug line
+        console.log('Update response:', response);
         
         // If response indicates OTP required, show OTP page
         if (response.data?.step === 'otp_required') {
@@ -638,7 +699,7 @@ export default function Properties() {
         });
       } else {
         const response = await createProperty(data);
-        console.log('Create response:', response); // Debug line
+        console.log('Create response:', response);
         
         // If response indicates OTP required, show OTP page  
         if (response.data?.step === 'otp_required') {
@@ -669,7 +730,7 @@ export default function Properties() {
     }
   };
 
-  // NEW: OTP verification handler
+  // OTP verification handler
   const handleOTPVerify = async (otp: string) => {
     if (!otpOperation) return;
 
@@ -718,7 +779,7 @@ export default function Properties() {
     }
   };
 
-  // NEW: OTP cancellation handler
+  // OTP cancellation handler
   const handleOTPCancel = () => {
     setShowOTPPage(false);
     setOtpOperation(null);
@@ -831,6 +892,8 @@ export default function Properties() {
           Add Property
         </Button>
       </div>
+
+      
 
       <Card>
         <CardHeader>
