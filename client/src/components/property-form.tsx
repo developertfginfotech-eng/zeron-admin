@@ -97,7 +97,7 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+    console.log('Form state:', formData)
     // Basic validation
     if (!formData.title.trim()) {
       toast({ title: "Title Required", variant: "destructive" })
