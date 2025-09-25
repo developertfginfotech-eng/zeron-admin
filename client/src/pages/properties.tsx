@@ -379,7 +379,7 @@ export default function Properties() {
       totalShares: totalShares,
       availableShares: totalShares,
       pricePerShare: totalValue / totalShares,
-      minInvestment: Math.max(1000, totalValue * 0.01),
+      minInvestment: totalValue * 0.01,
       projectedYield: parseFloat(formData.yield || '0'),
       managementFee: 2.5
     }));

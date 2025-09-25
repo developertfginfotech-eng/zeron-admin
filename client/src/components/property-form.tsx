@@ -104,10 +104,10 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
       return
     }
 
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      toast({ title: "Valid price required", variant: "destructive" })
-      return
-    }
+    // if (!formData.price || parseFloat(formData.price) <= 0) {
+    //   toast({ title: "Valid price required", variant: "destructive" })
+    //   return
+    // }
 
     if (!formData.propertyType) {
       toast({ title: "Property type required", variant: "destructive" })
@@ -212,11 +212,11 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
               <Input
                 id="price"
                 type="number"
-                min="100000"
+                min="0"
                 step="1000"
                 value={formData.price}
                 onChange={(e) => handleInputChange('price', e.target.value)}
-                placeholder="1000000"
+                placeholder="Enter any amount"
                 required
               />
             </div>
