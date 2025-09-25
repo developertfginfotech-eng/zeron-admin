@@ -9,7 +9,7 @@ import { Upload, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface PropertyFormProps {
-  onSubmit?: (data: FormData) => void
+  onSubmit?: (data: any) => void // Changed to any instead of FormData
   onCancel?: () => void
   initialData?: any
 }
@@ -37,7 +37,7 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
-    if (files.length === 0) return
+    if (!files.length) return
 
     const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
     const invalidFiles = files.filter((file) => !validTypes.includes(file.type))
@@ -62,7 +62,6 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
 
     setSelectedFiles(files)
 
-    // Generate previews
     const previews: string[] = []
     let loadedCount = 0
     files.forEach((file) => {
@@ -70,27 +69,22 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
       reader.onload = (e) => {
         previews.push(e.target?.result as string)
         loadedCount++
-        if (loadedCount === files.length) {
-          setFilePreviews(previews)
-        }
+        if (loadedCount === files.length) setFilePreviews(previews)
       }
       reader.readAsDataURL(file)
     })
   }
 
   const removeFile = (index: number) => {
-    const newFiles = selectedFiles.filter((_, i) => i !== index)
-    const newPreviews = filePreviews.filter((_, i) => i !== index)
-    setSelectedFiles(newFiles)
-    setFilePreviews(newPreviews)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+    setFilePreviews((prev) => prev.filter((_, i) => i !== index))
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validation
     if (!formData.title.trim()) {
       toast({ title: "Title Required", variant: "destructive" })
       return
@@ -101,51 +95,53 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
       return
     }
 
-    const submitData = new FormData()
-
-    // Basic fields
-    submitData.append("title", formData.title.trim())
-    submitData.append("description", formData.description)
-    submitData.append("propertyType", formData.propertyType)
-    submitData.append("status", formData.status)
-
-    // Location
-    const locationParts = formData.location.split(",").map((p) => p.trim())
-    const district = locationParts[0] || ""
-    const city = locationParts[1] || locationParts[0] || "riyadh"
-    const locationObj = {
-      address: formData.location,
-      addressAr: formData.location,
-      city: city.toLowerCase(),
-      district: district,
-      coordinates: { latitude: null, longitude: null },
-    }
-    submitData.append("location", JSON.stringify(locationObj))
-
-    // Financials
-    const financialsObj = {
-      totalValue: parseFloat(formData.price) || 0,
-      currentValue: parseFloat(formData.price) || 0,
-      projectedYield: parseFloat(formData.yield) || 0,
-      expectedReturn: parseFloat(formData.yield) || 0,
-      minimumInvestment: Math.max(1000, (parseFloat(formData.price) || 0) * 0.01),
-      managementFee: 2.5,
-      totalShares: 100,
-      availableShares: 100,
-      pricePerShare: (parseFloat(formData.price) || 0) / 100,
-    }
-    submitData.append("financials", JSON.stringify(financialsObj))
-
-    // Images
-    selectedFiles.forEach((file) => {
-      submitData.append("images", file)
+    // Debug logging
+    console.log('Form Data before submission:', {
+      title: formData.title,
+      description: formData.description,
+      propertyType: formData.propertyType,
+      status: formData.status,
+      location: formData.location,
+      price: formData.price,
+      yield: formData.yield,
+      files: selectedFiles.length
     })
 
-    // Debug: show what’s inside FormData
-    for (let [key, val] of submitData.entries()) {
-      console.log(key, val)
+    // Create the data structure to send
+    const submitData = {
+      // Basic fields (strings, not FormData)
+      title: formData.title.trim(),
+      description: formData.description,
+      propertyType: formData.propertyType,
+      status: formData.status,
+      
+      // Location object
+      location: {
+        address: formData.location,
+        addressAr: formData.location,
+        city: formData.location.split(",")[1]?.trim() || formData.location.split(",")[0]?.trim() || "riyadh",
+        district: formData.location.split(",")[0]?.trim() || "",
+        coordinates: { latitude: null, longitude: null },
+      },
+      
+      // Financials object
+      financials: {
+        totalValue: parseFloat(formData.price) || 0,
+        currentValue: parseFloat(formData.price) || 0,
+        projectedYield: parseFloat(formData.yield) || 0,
+        expectedReturn: parseFloat(formData.yield) || 0,
+        minimumInvestment: Math.max(1000, (parseFloat(formData.price) || 0) * 0.01),
+        managementFee: 2.5,
+        totalShares: 100,
+        availableShares: 100,
+        pricePerShare: (parseFloat(formData.price) || 0) / 100,
+      },
+      
+      // Files array
+      images: selectedFiles
     }
 
+    console.log('Submitting structured data:', submitData)
     onSubmit?.(submitData)
   }
 
@@ -159,26 +155,24 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Remove the <form> wrapper, handle submission manually */}
+          <div className="space-y-6">
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Property Title *</Label>
                 <Input
                   id="title"
-                  name="title"
                   value={formData.title}
                   onChange={(e) => handleInputChange("title", e.target.value)}
                   placeholder="Enter property title"
                   required
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
                 <Input
                   id="location"
-                  name="location"
                   value={formData.location}
                   onChange={(e) => handleInputChange("location", e.target.value)}
                   placeholder="District, City"
@@ -190,7 +184,6 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                name="description"
                 value={formData.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
                 placeholder="Enter property description"
@@ -213,7 +206,6 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
                   required
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="yield">Expected Yield (%)</Label>
                 <Input
@@ -247,7 +239,6 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
@@ -284,7 +275,6 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
                   className="hidden"
                 />
               </div>
-
               {selectedFiles.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {filePreviews.map((preview, index) => (
@@ -309,12 +299,14 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
 
             {/* Form Actions */}
             <div className="flex gap-4 pt-4">
-              <Button type="submit">{initialData ? "Update Property" : "Create Property"}</Button>
+              <Button type="button" onClick={handleSubmit}>
+                {initialData ? "Update Property" : "Create Property"}
+              </Button>
               <Button type="button" variant="outline" onClick={onCancel}>
                 Cancel
               </Button>
             </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
     </div>

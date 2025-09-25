@@ -15,6 +15,9 @@ import { useToast } from "@/hooks/use-toast"
 import { Search, Filter, Plus, ArrowLeft, Shield, AlertTriangle, Loader2, Clock, User } from "lucide-react"
 import { API_ENDPOINTS, apiCall, apiCallWithFiles } from "@/lib/api"
 
+// Configuration - CORRECTED BASE URL
+const API_BASE_URL = 'http://13.50.13.193:5000';
+
 // Backend property interface
 interface BackendProperty {
   _id: string;
@@ -104,10 +107,11 @@ export default function Properties() {
   const [showOTPPage, setShowOTPPage] = useState(false)
   const [otpOperation, setOtpOperation] = useState<{type: string, data: any} | null>(null)
 
-  // FIXED: Map backend property to frontend format with correct status handling
+  // FIXED: Map backend property to frontend format with CORRECTED image URL processing
   const mapBackendToFrontend = (backendProp: BackendProperty): FrontendProperty => {
     const totalInvestmentAmount = (backendProp.financials.totalValue * (backendProp.fundingProgress || 0)) / 100;
     
+    // CORRECTED: processImages function with proper URL construction
     const processImages = (images: any[]): string[] => {
       const fallbackImages = {
         residential: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=300&fit=crop',
@@ -120,26 +124,38 @@ export default function Properties() {
       }
       
       return images.map(img => {
+        let imageUrl = '';
+        
+        // Handle object format with url property
         if (typeof img === 'object' && img.url) {
-          if (img.url.startsWith('/uploads/')) {
-            return `http://localhost:5000${img.url}`;
-          }
-          if (img.url.startsWith('http')) {
-            return img.url;
-          }
+          imageUrl = img.url;
+        }
+        // Handle string format
+        else if (typeof img === 'string') {
+          imageUrl = img;
+        }
+        else {
+          // Fallback for unknown format
           return fallbackImages[backendProp.propertyType] || fallbackImages.residential;
         }
         
-        if (typeof img === 'string') {
-          if (img.startsWith('/uploads/')) {
-            return `http://localhost:5000${img}`;
-          }
-          if (img.startsWith('http')) {
-            return img;
-          }
-          return fallbackImages[backendProp.propertyType] || fallbackImages.residential;
+        // CORRECTED: Process the URL with the right base URL (no /api needed for images)
+        if (imageUrl.startsWith('/uploads/')) {
+          const fullUrl = `${API_BASE_URL}${imageUrl}`;
+          console.log('Generated image URL:', fullUrl); // Debug log
+          return fullUrl;
         }
         
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          return imageUrl;
+        }
+        
+        // If it's a relative path without /uploads/, assume it's from uploads
+        if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+          return `${API_BASE_URL}/uploads/${imageUrl}`;
+        }
+        
+        // Fallback if URL processing fails
         return fallbackImages[backendProp.propertyType] || fallbackImages.residential;
       });
     };
@@ -249,14 +265,16 @@ export default function Properties() {
         console.log(`Mapping property ${index + 1}:`, {
           title: prop.title,
           backendStatus: prop.status,
-          _id: prop._id
+          _id: prop._id,
+          images: prop.images
         });
         
         const mapped = mapBackendToFrontend(prop);
         console.log(`Mapped to frontend:`, {
           title: mapped.title,
           frontendStatus: mapped.status,
-          id: mapped.id
+          id: mapped.id,
+          images: mapped.images
         });
         
         return mapped;
@@ -320,13 +338,17 @@ export default function Properties() {
     }
   };
 
-  // FIXED: Create new property with correct status mapping
   const createProperty = async (formData: any) => {
+  console.log('Creating property with structured data:', formData);
+  
+  // Check if we have files to upload
+  const hasFiles = formData.images && formData.images.length > 0;
+  
+  if (hasFiles) {
+    // Use FormData for file uploads
     const uploadData = new FormData();
     
-    console.log('Creating property with form data:', formData);
-    
-    // Add basic property data
+    // Add basic fields
     uploadData.append('title', formData.title || '');
     uploadData.append('description', formData.description || '');
     uploadData.append('propertyType', formData.propertyType || 'residential');
@@ -336,7 +358,7 @@ export default function Properties() {
       uploadData.append('otp', formData.otp);
     }
     
-    // FIXED: Handle status mapping for creation
+    // Handle status mapping
     let backendStatus = 'active';
     if (formData.status) {
       switch (formData.status) {
@@ -344,7 +366,7 @@ export default function Properties() {
           backendStatus = 'active';
           break;
         case 'upcoming':
-          backendStatus = 'upcoming'; // Fixed: was 'fully_funded'
+          backendStatus = 'upcoming';
           break;
         case 'closed':
           backendStatus = 'closed';
@@ -354,47 +376,68 @@ export default function Properties() {
       }
     }
     uploadData.append('status', backendStatus);
-    console.log('Backend status being sent:', backendStatus);
     
-    // Parse location
-    const locationParts = (formData.location || '').split(',');
-    const district = locationParts[0]?.trim() || '';
-    const city = locationParts[1]?.trim() || 'riyadh';
+    // Add complex objects as JSON strings (for FormData)
+    uploadData.append('location', JSON.stringify(formData.location));
+    uploadData.append('financials', JSON.stringify(formData.financials));
     
-    uploadData.append('location', JSON.stringify({
-      address: formData.location || '',
-      addressAr: formData.location || '',
-      city: city.toLowerCase(),
-      district: district,
-      coordinates: { latitude: null, longitude: null }
-    }));
+    // Add files
+    formData.images.forEach((image: File) => {
+      uploadData.append('images', image);
+    });
     
-    // Add financials
-    const totalValue = parseFloat(formData.price || '0');
-    const totalShares = 100;
-    
-    uploadData.append('financials', JSON.stringify({
-      totalValue: totalValue,
-      currentValue: totalValue,
-      totalShares: totalShares,
-      availableShares: totalShares,
-      pricePerShare: totalValue / totalShares,
-      minInvestment: totalValue * 0.01,
-      projectedYield: parseFloat(formData.yield || '0'),
-      managementFee: 2.5
-    }));
-    
-    // Add images if they exist
-    if (formData.images && formData.images.length > 0) {
-      formData.images.forEach((image: File) => {
-        uploadData.append('images', image);
-      });
+    console.log('FormData contents:');
+    for (let [key, value] of uploadData.entries()) {
+      console.log(key, value);
     }
     
     const response = await apiCallWithFiles(API_ENDPOINTS.ADMIN.CREATE_PROPERTY, uploadData);
     console.log('Property creation response:', response);
     return response;
-  };
+    
+  } else {
+    // Use JSON for requests without files
+    const requestData = {
+      title: formData.title || '',
+      description: formData.description || '',
+      propertyType: formData.propertyType || 'residential',
+      status: formData.status || 'active',
+      location: formData.location,    // Direct object
+      financials: formData.financials, // Direct object
+      otp: formData.otp
+    };
+    
+    // Handle status mapping
+    if (formData.status) {
+      switch (formData.status) {
+        case 'live':
+          requestData.status = 'active';
+          break;
+        case 'upcoming':
+          requestData.status = 'upcoming';
+          break;
+        case 'closed':
+          requestData.status = 'closed';
+          break;
+        default:
+          requestData.status = 'active';
+      }
+    }
+    
+    console.log('JSON request data:', requestData);
+    
+    const response = await apiCall(API_ENDPOINTS.ADMIN.CREATE_PROPERTY, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData)
+    });
+    
+    console.log('Property creation response:', response);
+    return response;
+  }
+}
 
   // FIXED: Update property with correct status mapping
   const updateProperty = async (propertyId: string, formData: any) => {
@@ -892,8 +935,6 @@ export default function Properties() {
           Add Property
         </Button>
       </div>
-
-      
 
       <Card>
         <CardHeader>
