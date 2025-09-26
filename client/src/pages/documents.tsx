@@ -20,6 +20,7 @@ export default function EnhancedKYCDashboard() {
   const [selectedApplicant, setSelectedApplicant] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
+  const [isDocumentViewModalOpen, setIsDocumentViewModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [remarkText, setRemarkText] = useState("");
   
@@ -232,6 +233,15 @@ export default function EnhancedKYCDashboard() {
     setSelectedApplicant(applicant);
     setRemarkText(applicant.reviewNotes || '');
     setIsRemarkModalOpen(true);
+  };
+
+  const handleViewDocument = (docType, document, applicant) => {
+    setSelectedDocument({
+      type: docType,
+      data: document,
+      applicant: applicant
+    });
+    setIsDocumentViewModalOpen(true);
   };
 
   const handleSubmitRemark = async () => {
@@ -770,7 +780,11 @@ export default function EnhancedKYCDashboard() {
                             
                             <div className="flex items-center gap-2">
                               <Badge variant="secondary">PENDING</Badge>
-                              <Button variant="outline" size="sm">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewDocument(docType, document, selectedApplicant)}
+                              >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View
                               </Button>
@@ -857,6 +871,113 @@ export default function EnhancedKYCDashboard() {
                   {updating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                   Save Notes
                 </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Document View Modal */}
+          <Dialog open={isDocumentViewModalOpen} onOpenChange={setIsDocumentViewModalOpen}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Document Viewer - {selectedDocument?.type?.replace('_', ' ').toUpperCase() || 'Document'}
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedDocument?.applicant?.name}'s {selectedDocument?.type?.replace('_', ' ').toLowerCase() || 'document'}
+                </DialogDescription>
+              </DialogHeader>
+
+              {selectedDocument && (
+                <div className="space-y-4">
+                  {/* Document Information */}
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div><strong>Document Type:</strong> {selectedDocument.type?.replace('_', ' ').toUpperCase()}</div>
+                        <div><strong>Upload Date:</strong> {formatDate(selectedDocument.data?.uploadedAt)}</div>
+                        <div><strong>File Type:</strong> {selectedDocument.data?.type || 'Image'}</div>
+                        <div><strong>Status:</strong>
+                          <Badge variant="secondary" className="ml-2">PENDING REVIEW</Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Document Image Display */}
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-center">
+                        {selectedDocument.data?.url ? (
+                          <div className="space-y-4">
+                            <img
+                              src={selectedDocument.data.url}
+                              alt={`${selectedDocument.type} document`}
+                              className="max-w-full h-auto mx-auto border rounded-lg shadow-lg"
+                              style={{ maxHeight: '500px' }}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'block';
+                              }}
+                            />
+                            <div style={{ display: 'none' }} className="p-8 border-2 border-dashed border-gray-300 rounded-lg">
+                              <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                              <p className="text-gray-500">Document preview not available</p>
+                              <p className="text-sm text-gray-400">The document may be in a format that cannot be displayed</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-8 border-2 border-dashed border-gray-300 rounded-lg">
+                            <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                            <p className="text-gray-500">No document URL available</p>
+                            <p className="text-sm text-gray-400">The document may not have been uploaded correctly</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Document Actions */}
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="font-medium">Document Review Actions</h4>
+                          <p className="text-sm text-muted-foreground">Take action on this document</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Reject Document
+                          </Button>
+                          <Button variant="default" size="sm">
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Approve Document
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDocumentViewModalOpen(false)}>
+                  Close
+                </Button>
+                {selectedDocument?.data?.url && (
+                  <Button variant="default" asChild>
+                    <a
+                      href={selectedDocument.data.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </a>
+                  </Button>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>
