@@ -29,8 +29,10 @@ export const API_ENDPOINTS = {
 
     // Regular user management
     LIST_USERS: '/api/admin/users',
+    LIST_INVESTORS: '/api/admin/investors',
     UPDATE_KYC_STATUS: (userId: string) => `/api/admin/users/${userId}/kyc-status`,
     UPDATE_KYC: (userId: string) => `/api/admin/users/${userId}/kyc`,
+    UPLOAD_KYC_DOCUMENT: (userId: string) => `/api/admin/users/${userId}/kyc-documents`,
 
     // Property management
     LIST_PROPERTIES: '/api/admin/properties',

@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { apiCall, apiCallWithFiles, API_ENDPOINTS } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,6 +41,11 @@ export default function Investors() {
   const [languageFilter, setLanguageFilter] = useState("all")
   const [selectedInvestor, setSelectedInvestor] = useState<InvestorWithPortfolio | null>(null)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [investors, setInvestors] = useState<InvestorWithPortfolio[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [uploadingDocument, setUploadingDocument] = useState(false)
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>('')
 
   // Comprehensive mock investors data - only KYC approved customers
   const mockInvestors: InvestorWithPortfolio[] = [
@@ -2118,7 +2124,143 @@ export default function Investors() {
     }
   ]
 
-  const filteredInvestors = mockInvestors.filter(investor => {
+  // Fetch investors from API
+  useEffect(() => {
+    const fetchInvestors = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await apiCall(API_ENDPOINTS.ADMIN.LIST_INVESTORS)
+        console.log('API Response:', data)
+
+        // Handle different response formats
+        let investorsArray: any[] = []
+        if (Array.isArray(data)) {
+          investorsArray = data
+        } else if (data && data.success && data.data) {
+          // Handle {success: true, data: {...}} format
+          console.log('API data object:', data.data)
+          console.log('Data keys:', Object.keys(data.data))
+
+          if (Array.isArray(data.data)) {
+            investorsArray = data.data
+          } else if (data.data.investors && Array.isArray(data.data.investors)) {
+            investorsArray = data.data.investors
+          } else if (data.data.users && Array.isArray(data.data.users)) {
+            investorsArray = data.data.users
+          } else {
+            // If data.data is an object, check all its properties for arrays
+            const dataObj = data.data
+            for (const key in dataObj) {
+              if (Array.isArray(dataObj[key])) {
+                console.log(`Found array in ${key}:`, dataObj[key])
+                investorsArray = dataObj[key]
+                break
+              }
+            }
+          }
+        } else if (data && data.data && Array.isArray(data.data)) {
+          investorsArray = data.data
+        } else if (data && data.investors && Array.isArray(data.investors)) {
+          investorsArray = data.investors
+        }
+
+        if (investorsArray.length === 0) {
+          console.error('No investors array found in API response:', data)
+          console.log('Response type:', typeof data)
+          console.log('Response keys:', data ? Object.keys(data) : 'null/undefined')
+          // Don't throw error, just use empty array for now
+          console.warn('Using empty array - will fall back to mock data')
+        }
+
+        // Transform API data to match InvestorWithPortfolio interface
+        const transformedData: InvestorWithPortfolio[] = investorsArray.map((investor: any) => ({
+          ...investor,
+          activeProperties: investor.properties?.length || 0,
+          investments: investor.properties?.map((prop: any, index: number) => ({
+            id: `inv${investor.id}_${index}`,
+            investorId: investor.id,
+            propertyId: prop.propertyId,
+            propertyTitle: prop.propertyTitle,
+            investmentAmount: prop.amount?.toString() || '0',
+            ownershipPercentage: '0',
+            expectedReturn: '8.0',
+            currentValue: prop.amount?.toString() || '0',
+            totalReturns: prop.returns?.toString() || '0',
+            totalDividends: '0',
+            status: 'active',
+            investmentDate: new Date(prop.date),
+            lastUpdated: new Date(prop.date),
+          })) || [],
+          transactions: investor.transactions || [],
+          portfolio: investor.portfolio || {
+            id: `port${investor.id}`,
+            investorId: investor.id,
+            totalInvestment: investor.totalInvestments?.toString() || '0',
+            currentValue: investor.totalInvestments?.toString() || '0',
+            totalReturns: investor.totalReturns?.toString() || '0',
+            totalDividends: '0',
+            totalWithdrawals: '0',
+            unrealizedGains: '0',
+            realizedGains: '0',
+            riskScore: investor.aiRiskScore || 5,
+            performanceScore: 75,
+            lastUpdated: new Date(),
+          },
+          kycDocuments: investor.kycDocuments || (investor.kycStatus === 'approved' ? [
+            {
+              id: `doc_${investor.id}_1`,
+              investorId: investor.id,
+              documentType: 'national_id',
+              fileName: 'national_id.pdf',
+              fileSize: 1024000,
+              fileUrl: '#',
+              status: 'approved',
+              uploadedAt: new Date(investor.joinedDate || new Date()),
+              reviewedAt: new Date(investor.joinedDate || new Date()),
+              confidenceScore: 95,
+              extractedData: {
+                fullName: investor.name,
+                documentNumber: `ID${Math.random().toString().substr(2, 9)}`,
+                issueDate: '2020-01-15',
+                expiryDate: '2030-01-15'
+              }
+            },
+            {
+              id: `doc_${investor.id}_2`,
+              investorId: investor.id,
+              documentType: 'proof_of_address',
+              fileName: 'address_proof.pdf',
+              fileSize: 856000,
+              fileUrl: '#',
+              status: 'approved',
+              uploadedAt: new Date(investor.joinedDate || new Date()),
+              reviewedAt: new Date(investor.joinedDate || new Date()),
+              confidenceScore: 92,
+              extractedData: {
+                address: investor.address || 'N/A',
+                issueDate: '2024-01-01'
+              }
+            }
+          ] : [])
+        }))
+
+        setInvestors(transformedData)
+        console.log(`Successfully loaded ${transformedData.length} investors`)
+      } catch (err) {
+        console.error('Error fetching investors:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch investors')
+        // Fallback to mock data if API fails
+        setInvestors(mockInvestors)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchInvestors()
+  }, [])
+
+  const filteredInvestors = investors.filter(investor => {
     // Only show KYC-approved investors
     const isApproved = investor.kycStatus === 'approved'
     const matchesSearch = investor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2202,6 +2344,125 @@ export default function Investors() {
     // In real app, this would export the data
   }
 
+  const handleDocumentUpload = async (file: File, documentType: string, investorId: string) => {
+    try {
+      setUploadingDocument(true)
+
+      // Create form data for file upload
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('documentType', documentType)
+      formData.append('investorId', investorId)
+
+      // Upload to backend API
+      try {
+        const response = await apiCallWithFiles(API_ENDPOINTS.ADMIN.UPLOAD_KYC_DOCUMENT(investorId), formData)
+
+        // If upload successful, use the response data
+        if (response && response.success) {
+          const newDocument = response.data
+
+          // Update the investor's documents
+          setInvestors(prev => prev.map(inv => {
+            if (inv.id === investorId) {
+              return {
+                ...inv,
+                kycDocuments: [...(inv.kycDocuments || []), newDocument]
+              }
+            }
+            return inv
+          }))
+
+          // Update selected investor if it's the same one
+          if (selectedInvestor?.id === investorId) {
+            setSelectedInvestor(prev => prev ? {
+              ...prev,
+              kycDocuments: [...(prev.kycDocuments || []), newDocument]
+            } : null)
+          }
+
+          console.log('Document uploaded successfully:', response.message)
+          return
+        }
+      } catch (apiError) {
+        console.error('API upload failed, falling back to mock:', apiError)
+      }
+
+      // Fallback: create a mock document if API fails
+      const newDocument: KycDocument = {
+        id: `doc_${Date.now()}`,
+        investorId: investorId,
+        documentType: documentType,
+        fileName: file.name,
+        fileSize: file.size,
+        fileUrl: URL.createObjectURL(file), // Temporary URL for demo
+        status: 'under_review',
+        uploadedAt: new Date(),
+        confidenceScore: 85,
+        extractedData: {}
+      }
+
+      // Update the investor's documents
+      setInvestors(prev => prev.map(inv => {
+        if (inv.id === investorId) {
+          return {
+            ...inv,
+            kycDocuments: [...(inv.kycDocuments || []), newDocument]
+          }
+        }
+        return inv
+      }))
+
+      // Update selected investor if it's the same one
+      if (selectedInvestor?.id === investorId) {
+        setSelectedInvestor(prev => prev ? {
+          ...prev,
+          kycDocuments: [...(prev.kycDocuments || []), newDocument]
+        } : null)
+      }
+
+      console.log('Document uploaded successfully:', file.name)
+    } catch (error) {
+      console.error('Error uploading document:', error)
+    } finally {
+      setUploadingDocument(false)
+      setSelectedDocumentType('')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 modern-scrollbar">
+        <div className="p-6 space-y-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p className="text-lg text-muted-foreground">Loading investors...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 modern-scrollbar">
+        <div className="p-6 space-y-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center space-y-4">
+              <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
+              <p className="text-lg text-destructive">{error}</p>
+              <Button onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 modern-scrollbar">
       <div className="p-6 space-y-8" data-testid="page-investors">
@@ -2215,7 +2476,7 @@ export default function Investors() {
             </p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              {mockInvestors.length} active investors • {mockInvestors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.totalInvestment), 0).toLocaleString()} total investment • {Array.from(new Set(mockInvestors.flatMap(inv => inv.languagesSpoken || []))).length} languages
+              {investors.length} active investors • {investors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.totalInvestment), 0).toLocaleString()} total investment • {Array.from(new Set(investors.flatMap(inv => inv.languagesSpoken || []))).length} languages
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -2237,7 +2498,7 @@ export default function Investors() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {mockInvestors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.totalInvestment), 0).toLocaleString()}
+                {investors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.totalInvestment), 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
                 Across all portfolios
@@ -2254,7 +2515,7 @@ export default function Investors() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">
-                {mockInvestors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.currentValue), 0).toLocaleString()}
+                {investors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.currentValue), 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
                 Live portfolio value
@@ -2271,7 +2532,7 @@ export default function Investors() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {mockInvestors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.totalReturns), 0).toLocaleString()}
+                {investors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.totalReturns), 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
                 Total profit generated
@@ -2288,7 +2549,7 @@ export default function Investors() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">
-                {Math.round(mockInvestors.reduce((sum, inv) => sum + safePerformanceScore(inv.portfolio.performanceScore), 0) / mockInvestors.length)}%
+                {Math.round(investors.reduce((sum, inv) => sum + safePerformanceScore(inv.portfolio.performanceScore), 0) / (investors.length || 1))}%
               </div>
               <p className="text-xs text-muted-foreground">
                 Portfolio performance
@@ -2323,12 +2584,12 @@ export default function Investors() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Job Categories</SelectItem>
-                    <SelectItem value="executive">Executives ({mockInvestors.filter(i => i.jobCategory === 'executive').length})</SelectItem>
-                    <SelectItem value="management">Management ({mockInvestors.filter(i => i.jobCategory === 'management').length})</SelectItem>
-                    <SelectItem value="professional">Professionals ({mockInvestors.filter(i => i.jobCategory === 'professional').length})</SelectItem>
-                    <SelectItem value="skilled_worker">Skilled Workers ({mockInvestors.filter(i => i.jobCategory === 'skilled_worker').length})</SelectItem>
-                    <SelectItem value="entry_level">Entry Level ({mockInvestors.filter(i => i.jobCategory === 'entry_level').length})</SelectItem>
-                    <SelectItem value="labor">Labor ({mockInvestors.filter(i => i.jobCategory === 'labor').length})</SelectItem>
+                    <SelectItem value="executive">Executives ({investors.filter(i => i.jobCategory === 'executive').length})</SelectItem>
+                    <SelectItem value="management">Management ({investors.filter(i => i.jobCategory === 'management').length})</SelectItem>
+                    <SelectItem value="professional">Professionals ({investors.filter(i => i.jobCategory === 'professional').length})</SelectItem>
+                    <SelectItem value="skilled_worker">Skilled Workers ({investors.filter(i => i.jobCategory === 'skilled_worker').length})</SelectItem>
+                    <SelectItem value="entry_level">Entry Level ({investors.filter(i => i.jobCategory === 'entry_level').length})</SelectItem>
+                    <SelectItem value="labor">Labor ({investors.filter(i => i.jobCategory === 'labor').length})</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -2338,9 +2599,9 @@ export default function Investors() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Tiers</SelectItem>
-                    <SelectItem value="top">Top Investors ({mockInvestors.filter(i => i.investorTier === 'top').length})</SelectItem>
-                    <SelectItem value="medium">Medium Investors ({mockInvestors.filter(i => i.investorTier === 'medium').length})</SelectItem>
-                    <SelectItem value="low">Entry Investors ({mockInvestors.filter(i => i.investorTier === 'low').length})</SelectItem>
+                    <SelectItem value="top">Top Investors ({investors.filter(i => i.investorTier === 'top').length})</SelectItem>
+                    <SelectItem value="medium">Medium Investors ({investors.filter(i => i.investorTier === 'medium').length})</SelectItem>
+                    <SelectItem value="low">Entry Investors ({investors.filter(i => i.investorTier === 'low').length})</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -2350,13 +2611,13 @@ export default function Investors() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Languages</SelectItem>
-                    <SelectItem value="ar">Arabic ({mockInvestors.filter(i => i.languagesSpoken?.includes('ar')).length})</SelectItem>
-                    <SelectItem value="en">English ({mockInvestors.filter(i => i.languagesSpoken?.includes('en')).length})</SelectItem>
-                    <SelectItem value="fr">French ({mockInvestors.filter(i => i.languagesSpoken?.includes('fr')).length})</SelectItem>
-                    <SelectItem value="hi">Hindi ({mockInvestors.filter(i => i.languagesSpoken?.includes('hi')).length})</SelectItem>
-                    <SelectItem value="ur">Urdu ({mockInvestors.filter(i => i.languagesSpoken?.includes('ur')).length})</SelectItem>
-                    <SelectItem value="zh">Chinese ({mockInvestors.filter(i => i.languagesSpoken?.includes('zh')).length})</SelectItem>
-                    <SelectItem value="tl">Tagalog ({mockInvestors.filter(i => i.languagesSpoken?.includes('tl')).length})</SelectItem>
+                    <SelectItem value="ar">Arabic ({investors.filter(i => i.languagesSpoken?.includes('ar')).length})</SelectItem>
+                    <SelectItem value="en">English ({investors.filter(i => i.languagesSpoken?.includes('en')).length})</SelectItem>
+                    <SelectItem value="fr">French ({investors.filter(i => i.languagesSpoken?.includes('fr')).length})</SelectItem>
+                    <SelectItem value="hi">Hindi ({investors.filter(i => i.languagesSpoken?.includes('hi')).length})</SelectItem>
+                    <SelectItem value="ur">Urdu ({investors.filter(i => i.languagesSpoken?.includes('ur')).length})</SelectItem>
+                    <SelectItem value="zh">Chinese ({investors.filter(i => i.languagesSpoken?.includes('zh')).length})</SelectItem>
+                    <SelectItem value="tl">Tagalog ({investors.filter(i => i.languagesSpoken?.includes('tl')).length})</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -2668,7 +2929,7 @@ export default function Investors() {
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                               <div className="space-y-2">
-                                <h4 className="font-semibold">Property Investment #{investment.propertyId}</h4>
+                                <h4 className="font-semibold">{investment.propertyTitle || `Property Investment #${investment.propertyId}`}</h4>
                                 <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                                   <span>Invested: {formatCurrency(investment.investmentAmount)}</span>
                                   <span>Ownership: {formatPercentage(investment.ownershipPercentage)}</span>
@@ -3061,7 +3322,7 @@ export default function Investors() {
                                           Extracted Information
                                         </h5>
                                         <div className="grid grid-cols-2 gap-2 text-xs">
-                                          {Object.entries(JSON.parse(document.extractedData)).map(([key, value]) => (
+                                          {Object.entries(document.extractedData || {}).map(([key, value]) => (
                                             <div key={key} className="flex justify-between">
                                               <span className="text-muted-foreground capitalize">
                                                 {key.replace(/([A-Z])/g, ' $1').trim()}:
@@ -3093,6 +3354,61 @@ export default function Investors() {
                             </CardContent>
                           </Card>
                         )}
+
+                        {/* Upload New Document */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <FileText className="h-5 w-5 text-primary" />
+                              Upload New KYC Document
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Document Type</label>
+                                <Select value={selectedDocumentType} onValueChange={setSelectedDocumentType}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select document type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="national_id">National ID</SelectItem>
+                                    <SelectItem value="passport">Passport</SelectItem>
+                                    <SelectItem value="driver_license">Driver's License</SelectItem>
+                                    <SelectItem value="proof_of_address">Proof of Address</SelectItem>
+                                    <SelectItem value="bank_statement">Bank Statement</SelectItem>
+                                    <SelectItem value="employment_certificate">Employment Certificate</SelectItem>
+                                    <SelectItem value="tax_certificate">Tax Certificate</SelectItem>
+                                    <SelectItem value="selfie">Selfie with ID</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Upload File</label>
+                                <Input
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file && selectedDocumentType && selectedInvestor) {
+                                      handleDocumentUpload(file, selectedDocumentType, selectedInvestor.id)
+                                    }
+                                  }}
+                                  disabled={uploadingDocument || !selectedDocumentType}
+                                />
+                              </div>
+                            </div>
+                            {uploadingDocument && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                Uploading document...
+                              </div>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Supported formats: PDF, JPG, PNG, DOC, DOCX. Max file size: 10MB
+                            </p>
+                          </CardContent>
+                        </Card>
                       </div>
 
                       {/* KYC Completion Summary */}

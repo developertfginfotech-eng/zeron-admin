@@ -81,7 +81,7 @@ export function AiChatWidget() {
   const connectWebSocket = () => {
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.host}/ws`
+      const wsUrl = `${protocol}//13.50.13.193:5000/ws`
       
       wsRef.current = new WebSocket(wsUrl)
       

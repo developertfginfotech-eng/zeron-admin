@@ -56,6 +56,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoints
+  app.get("/api/admin/investors", async (req, res) => {
+    try {
+      const investors = await storage.getAllInvestors();
+      res.json(investors);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch investors" });
+    }
+  });
+
   // Properties endpoints
   app.get("/api/properties", async (req, res) => {
     try {
