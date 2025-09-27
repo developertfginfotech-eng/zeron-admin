@@ -36,6 +36,16 @@ export const properties = pgTable("properties", {
   ownershipCap: integer("ownership_cap").default(100),
   status: text("status").notNull().default("upcoming"),
   images: text("images").array(),
+  // Enhanced financial fields
+  totalValue: decimal("total_value", { precision: 12, scale: 2 }),
+  minInvestment: decimal("min_investment", { precision: 12, scale: 2 }),
+  totalShares: integer("total_shares"),
+  availableShares: integer("available_shares"),
+  pricePerShare: decimal("price_per_share", { precision: 10, scale: 2 }),
+  monthlyRental: decimal("monthly_rental", { precision: 10, scale: 2 }),
+  propertyTax: decimal("property_tax", { precision: 10, scale: 2 }),
+  maintenanceCost: decimal("maintenance_cost", { precision: 10, scale: 2 }),
+  currentValue: decimal("current_value", { precision: 12, scale: 2 }),
   // Investment tracking fields
   totalInvestment: decimal("total_investment", { precision: 12, scale: 2 }).default("0"),
   investorCount: integer("investor_count").default(0),

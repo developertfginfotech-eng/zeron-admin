@@ -12,10 +12,26 @@ export const API_ENDPOINTS = {
   
   // Admin endpoints
   ADMIN: {
-    // User management
+    // Admin user management
+    GET_ADMIN_USERS: '/api/admin/admin-users',
+    GET_ADMIN_USER_DETAILS: (id: string) => `/api/admin/admin-users/${id}`,
+    UPDATE_ADMIN_USER_DETAILS: (id: string) => `/api/admin/admin-users/${id}/details`,
+    DEACTIVATE_ADMIN_USER: (id: string) => `/api/admin/admin-users/${id}/deactivate`,
+    REACTIVATE_ADMIN_USER: (id: string) => `/api/admin/admin-users/${id}/reactivate`,
+
+    // Role management
+    PROMOTE_TO_SUPER_ADMIN: (id: string) => `/api/admin/admin-users/${id}/promote-super-admin`,
+    UPDATE_ADMIN_ROLE: (id: string) => `/api/admin/admin-users/${id}/role`,
+
+    // User promotion
+    GET_ELIGIBLE_USERS: '/api/admin/eligible-users',
+    PROMOTE_USER_TO_ADMIN: '/api/admin/promote-user',
+
+    // Regular user management
     LIST_USERS: '/api/admin/users',
+    UPDATE_KYC_STATUS: (userId: string) => `/api/admin/users/${userId}/kyc-status`,
     UPDATE_KYC: (userId: string) => `/api/admin/users/${userId}/kyc`,
-    
+
     // Property management
     LIST_PROPERTIES: '/api/admin/properties',
     CREATE_PROPERTY: '/api/admin/properties',
@@ -23,7 +39,7 @@ export const API_ENDPOINTS = {
     UPDATE_PROPERTY: (id: string) => `/api/admin/properties/${id}`,
     DELETE_PROPERTY: (id: string) => `/api/admin/properties/${id}`,
     DEACTIVATE_PROPERTY: (id: string) => `/api/admin/properties/${id}/deactivate`,
-    
+
     // Reports
     EARNINGS_REPORT: '/api/admin/reports/earnings',
     DASHBOARD: '/api/admin/dashboard'

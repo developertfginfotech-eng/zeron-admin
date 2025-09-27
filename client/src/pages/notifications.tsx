@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Send, Bookmark } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Plus, Send, Bookmark, AlertTriangle, CheckCircle, Bell } from "lucide-react"
 import { Notification } from "@shared/schema"
 import { useToast } from "@/hooks/use-toast"
 
@@ -24,51 +25,83 @@ export default function Notifications() {
   const mockNotifications: Notification[] = [
     {
       id: '1',
-      title: 'New Property Added',
-      message: 'A new luxury apartment complex has been added to the platform and is now available for investment.',
-      type: 'info',
+      title: 'KYC Approved',
+      message: '4 users have been successfully verified and approved for trading.',
+      type: 'success',
       isRead: false,
       createdAt: new Date('2024-01-15T10:30:00'),
     },
     {
       id: '2',
-      title: 'KYC Approved',
-      message: 'Ahmed Al-Rashid\'s KYC verification has been successfully approved and they can now start investing.',
-      type: 'success',
-      isRead: false,
-      createdAt: new Date('2024-01-14T15:45:00'),
-    },
-    {
-      id: '3',
-      title: 'Payment Failed',
-      message: 'Investment payment for Property #2847 failed due to insufficient funds. Please review the transaction.',
-      type: 'error',
-      isRead: true,
-      createdAt: new Date('2024-01-13T09:15:00'),
-    },
-    {
-      id: '4',
       title: 'Document Review Required',
       message: 'Multiple KYC documents are pending review. Please check the Users & KYC section.',
       type: 'warning',
       isRead: false,
-      createdAt: new Date('2024-01-12T14:20:00'),
+      createdAt: new Date('2024-01-15T09:45:00'),
     },
     {
-      id: '5',
-      title: 'Monthly Payout Processed',
-      message: 'Monthly rental payouts have been successfully processed for all active investments.',
-      type: 'success',
-      isRead: true,
-      createdAt: new Date('2024-01-11T11:00:00'),
-    },
-    {
-      id: '6',
+      id: '3',
       title: 'New User Registration',
       message: 'Sarah Johnson has successfully registered and completed the onboarding process.',
       type: 'info',
       isRead: false,
-      createdAt: new Date('2024-01-10T16:30:00'),
+      createdAt: new Date('2024-01-15T08:20:00'),
+    },
+    {
+      id: '4',
+      title: 'KYC Approved',
+      message: 'Ahmed Al-Rashid\'s KYC verification has been successfully approved and they can now start investing.',
+      type: 'success',
+      isRead: true,
+      createdAt: new Date('2024-01-14T15:45:00'),
+    },
+    {
+      id: '5',
+      title: 'Document Review Required',
+      message: 'NATIONALID and other documents from 3 users require immediate review.',
+      type: 'warning',
+      isRead: false,
+      createdAt: new Date('2024-01-14T14:20:00'),
+    },
+    {
+      id: '6',
+      title: 'New User Registration',
+      message: 'Mohammed Abdullah has successfully registered and submitted KYC documents.',
+      type: 'info',
+      isRead: true,
+      createdAt: new Date('2024-01-14T11:30:00'),
+    },
+    {
+      id: '7',
+      title: 'High Volume Alert',
+      message: 'High number of pending KYC applications (12) require immediate attention to prevent delays.',
+      type: 'error',
+      isRead: false,
+      createdAt: new Date('2024-01-14T10:15:00'),
+    },
+    {
+      id: '8',
+      title: 'KYC Approved',
+      message: 'Fatima Al-Zahra\'s documents have been verified and approved.',
+      type: 'success',
+      isRead: true,
+      createdAt: new Date('2024-01-13T16:00:00'),
+    },
+    {
+      id: '9',
+      title: 'Document Review Required',
+      message: 'Identity verification documents need review for compliance.',
+      type: 'warning',
+      isRead: false,
+      createdAt: new Date('2024-01-13T13:45:00'),
+    },
+    {
+      id: '10',
+      title: 'New User Registration',
+      message: 'Omar Hassan has completed registration and uploaded required documents.',
+      type: 'info',
+      isRead: true,
+      createdAt: new Date('2024-01-12T14:30:00'),
     },
   ]
 
@@ -131,6 +164,48 @@ export default function Notifications() {
             Create Notification
           </Button>
         </div>
+      </div>
+
+      {/* Critical Alerts Section */}
+      <div className="space-y-4">
+        {/* KYC Approved Alert */}
+        <Alert className="border-green-500/50 bg-green-50/50 dark:bg-green-950/50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-800 dark:text-green-200">
+            KYC Approved
+            <Badge variant="default" className="ml-2 bg-green-600">
+              New
+            </Badge>
+          </AlertTitle>
+          <AlertDescription className="text-green-700 dark:text-green-300">
+            4 users have been successfully verified and approved for trading.
+          </AlertDescription>
+        </Alert>
+
+        {/* Document Review Required Warning */}
+        <Alert className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/50" data-testid="alert-document-review">
+          <AlertTriangle className="h-4 w-4 text-amber-600 animate-pulse" />
+          <AlertTitle className="text-amber-800 dark:text-amber-200">
+            Document Review Required
+            <Badge variant="outline" className="ml-2 border-amber-600 text-amber-700">
+              warning
+            </Badge>
+          </AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            Multiple KYC documents are pending review. Please check the Users & KYC section.
+          </AlertDescription>
+        </Alert>
+
+        {/* New User Registration Alert */}
+        <Alert className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/50">
+          <Bell className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-800 dark:text-blue-200">
+            New User Registration
+          </AlertTitle>
+          <AlertDescription className="text-blue-700 dark:text-blue-300">
+            Sarah Johnson has successfully registered and completed the onboarding process.
+          </AlertDescription>
+        </Alert>
       </div>
 
       {/* Summary Cards */}

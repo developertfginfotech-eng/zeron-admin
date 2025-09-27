@@ -26,6 +26,14 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
     propertyType: initialData?.propertyType || "",
     yield: initialData?.yield || "",
     status: initialData?.status || "upcoming",
+    totalValue: initialData?.totalValue || "",
+    currentValue: initialData?.currentValue || "",
+    totalShares: initialData?.totalShares || "",
+    availableShares: initialData?.availableShares || "",
+    pricePerShare: initialData?.pricePerShare || "",
+    projectedYield: initialData?.projectedYield || "",
+    monthlyRental: initialData?.monthlyRental || "",
+    minInvestment: initialData?.minInvestment || "",
   })
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
@@ -104,6 +112,14 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
       location: formData.location,
       price: formData.price,
       yield: formData.yield,
+      totalValue: formData.totalValue,
+      currentValue: formData.currentValue,
+      totalShares: formData.totalShares,
+      availableShares: formData.availableShares,
+      pricePerShare: formData.pricePerShare,
+      projectedYield: formData.projectedYield,
+      monthlyRental: formData.monthlyRental,
+      minInvestment: formData.minInvestment,
       files: selectedFiles.length
     })
 
@@ -126,15 +142,16 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
       
       // Financials object
       financials: {
-        totalValue: parseFloat(formData.price) || 0,
-        currentValue: parseFloat(formData.price) || 0,
-        projectedYield: parseFloat(formData.yield) || 0,
+        totalValue: parseFloat(formData.totalValue) || parseFloat(formData.price) || 0,
+        currentValue: parseFloat(formData.currentValue) || parseFloat(formData.price) || 0,
+        projectedYield: parseFloat(formData.projectedYield) || parseFloat(formData.yield) || 0,
         expectedReturn: parseFloat(formData.yield) || 0,
-        minimumInvestment: Math.max(1000, (parseFloat(formData.price) || 0) * 0.01),
+        minimumInvestment: parseFloat(formData.minInvestment) || Math.max(1000, (parseFloat(formData.price) || 0) * 0.01),
         managementFee: 2.5,
-        totalShares: 100,
-        availableShares: 100,
-        pricePerShare: (parseFloat(formData.price) || 0) / 100,
+        totalShares: parseFloat(formData.totalShares) || 100,
+        availableShares: parseFloat(formData.availableShares) || 100,
+        pricePerShare: parseFloat(formData.pricePerShare) || (parseFloat(formData.price) || 0) / 100,
+        monthlyRental: parseFloat(formData.monthlyRental) || 0,
       },
       
       // Files array
@@ -191,33 +208,99 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
               />
             </div>
 
-            {/* Financial Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="price">Total Value (SAR) *</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={formData.price}
-                  onChange={(e) => handleInputChange("price", e.target.value)}
-                  placeholder="Enter any amount"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="yield">Expected Yield (%)</Label>
-                <Input
-                  id="yield"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={formData.yield}
-                  onChange={(e) => handleInputChange("yield", e.target.value)}
-                  placeholder="8.5"
-                />
+
+            {/* Investment Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Investment Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="totalValue">Total Value (SAR)</Label>
+                  <Input
+                    id="totalValue"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.totalValue}
+                    onChange={(e) => handleInputChange("totalValue", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="currentValue">Current Value (SAR)</Label>
+                  <Input
+                    id="currentValue"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.currentValue}
+                    onChange={(e) => handleInputChange("currentValue", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="totalShares">Total Shares</Label>
+                  <Input
+                    id="totalShares"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={formData.totalShares}
+                    onChange={(e) => handleInputChange("totalShares", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="availableShares">Available Shares</Label>
+                  <Input
+                    id="availableShares"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.availableShares}
+                    onChange={(e) => handleInputChange("availableShares", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pricePerShare">Price Per Share (SAR)</Label>
+                  <Input
+                    id="pricePerShare"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.pricePerShare}
+                    onChange={(e) => handleInputChange("pricePerShare", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="yield">Expected Yield (%)</Label>
+                  <Input
+                    id="yield"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.yield}
+                    onChange={(e) => handleInputChange("yield", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="monthlyRental">Monthly Rental (SAR)</Label>
+                  <Input
+                    id="monthlyRental"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.monthlyRental}
+                    onChange={(e) => handleInputChange("monthlyRental", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="minInvestment">Minimum Investment (SAR)</Label>
+                  <Input
+                    id="minInvestment"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.minInvestment}
+                    onChange={(e) => handleInputChange("minInvestment", e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
