@@ -21,9 +21,10 @@ export function useTransactions(options?: {
       if (options?.limit) params.append('limit', String(options.limit))
       if (options?.offset) params.append('offset', String(options.offset))
 
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token')
       const response = await fetch(`${API_URL}/admin/transactions?${params}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       })
 

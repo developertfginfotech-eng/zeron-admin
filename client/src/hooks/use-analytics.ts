@@ -15,9 +15,10 @@ export function useAnalytics(options?: {
       if (options?.endDate) params.append('endDate', options.endDate)
       if (options?.range) params.append('range', options.range)
 
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token')
       const response = await fetch(`${API_URL}/admin/analytics?${params}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       })
 
