@@ -9,6 +9,9 @@ export interface DashboardOverview {
   totalUsers: number;
   pendingKyc: number;
   totalInvestmentValue: number;
+  totalReturns?: number;
+  projectedReturns?: number;
+  averageReturnPercentage?: number;
 }
 
 export interface DashboardStats {

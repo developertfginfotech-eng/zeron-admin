@@ -64,17 +64,17 @@ export default function Dashboard() {
         </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {loading ? (
           <>
-            <div className="col-span-1 md:col-span-2 lg:col-span-4 flex items-center justify-center py-8">
+            <div className="col-span-1 md:col-span-2 lg:col-span-5 flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-2" />
               <span className="text-muted-foreground">Loading dashboard data...</span>
             </div>
           </>
         ) : error ? (
           <>
-            <div className="col-span-1 md:col-span-2 lg:col-span-4 flex items-center justify-center py-8 text-red-600">
+            <div className="col-span-1 md:col-span-2 lg:col-span-5 flex items-center justify-center py-8 text-red-600">
               <AlertCircle className="h-5 w-5 mr-2" />
               <span>Failed to load dashboard data. Please try refreshing.</span>
             </div>
@@ -99,6 +99,13 @@ export default function Dashboard() {
               title="Total Investments"
               value={`SAR ${(overview.totalInvestmentValue / 1000000).toFixed(1)}M` || "SAR 0"}
               change={`+0% from last month`}
+              changeType="positive"
+              icon={TrendingUp}
+            />
+            <StatCard
+              title="Projected Returns"
+              value={`SAR ${((overview.projectedReturns || 0) / 1000000).toFixed(1)}M`}
+              change={`${overview.averageReturnPercentage || 0}% average return`}
               changeType="positive"
               icon={TrendingUp}
             />
