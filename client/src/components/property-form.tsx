@@ -18,27 +18,50 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   
+  // Helper function to extract location address
+  const getLocationAddress = () => {
+    if (!initialData?.location) return "";
+    if (typeof initialData.location === 'string') {
+      return initialData.location;
+    }
+    if (typeof initialData.location === 'object') {
+      // Extract from object format - combine district and city
+      const district = initialData.location.district || "";
+      const city = initialData.location.city || "";
+      return district && city ? `${district}, ${city}` : initialData.location.address || "";
+    }
+    return "";
+  };
+
+  // Helper function to extract financials
+  const getFinancialValue = (key: string, fallback: string = "") => {
+    if (typeof initialData?.financials === 'object') {
+      return initialData.financials[key]?.toString() || fallback;
+    }
+    return initialData?.[key]?.toString() || fallback;
+  };
+
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
-    location: initialData?.location || "",
-    price: initialData?.price || "",
+    location: getLocationAddress(),
+    price: getFinancialValue("totalValue"),
     propertyType: initialData?.propertyType || "",
-    yield: initialData?.yield || "",
+    yield: getFinancialValue("projectedYield"),
     status: initialData?.status || "upcoming",
-    totalValue: initialData?.totalValue || "",
-    currentValue: initialData?.currentValue || "",
-    totalShares: initialData?.totalShares || "",
-    availableShares: initialData?.availableShares || "",
-    pricePerShare: initialData?.pricePerShare || "",
-    projectedYield: initialData?.projectedYield || "",
-    monthlyRental: initialData?.monthlyRental || "",
-    minInvestment: initialData?.minInvestment || "",
+    totalValue: getFinancialValue("totalValue"),
+    currentValue: getFinancialValue("currentValue"),
+    totalShares: getFinancialValue("totalShares"),
+    availableShares: getFinancialValue("availableShares"),
+    pricePerShare: getFinancialValue("pricePerShare"),
+    projectedYield: getFinancialValue("projectedYield"),
+    monthlyRental: getFinancialValue("monthlyRental"),
+    minInvestment: getFinancialValue("minInvestment"),
     // Investment Terms - Property Specific
-    rentalYieldRate: initialData?.investmentTerms?.rentalYieldRate || "",
-    appreciationRate: initialData?.investmentTerms?.appreciationRate || "",
-    lockingPeriodYears: initialData?.investmentTerms?.lockingPeriodYears || "",
-    earlyWithdrawalPenaltyPercentage: initialData?.investmentTerms?.earlyWithdrawalPenaltyPercentage || "",
+    rentalYieldRate: initialData?.investmentTerms?.rentalYieldRate?.toString() || "",
+    appreciationRate: initialData?.investmentTerms?.appreciationRate?.toString() || "",
+    lockingPeriodYears: initialData?.investmentTerms?.lockingPeriodYears?.toString() || "",
+    earlyWithdrawalPenaltyPercentage: initialData?.investmentTerms?.earlyWithdrawalPenaltyPercentage?.toString() || "",
   })
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])

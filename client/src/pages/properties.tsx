@@ -475,16 +475,29 @@ export default function Properties() {
     uploadData.append('status', backendStatus);
     console.log('Backend status being sent for update:', backendStatus);
     
-    // Parse location
-    const locationParts = (formData.location || '').split(',');
-    const district = locationParts[0]?.trim() || '';
-    const city = locationParts[1]?.trim() || 'riyadh';
-    
+    // Parse location - handle both string (new property) and object (edit mode)
+    let locationAddress = '';
+    let locationCity = 'riyadh';
+    let locationDistrict = '';
+
+    if (typeof formData.location === 'object' && formData.location !== null) {
+      // Location is an object (from backend)
+      locationAddress = formData.location.address || '';
+      locationCity = formData.location.city || 'riyadh';
+      locationDistrict = formData.location.district || '';
+    } else {
+      // Location is a string (new property)
+      const locationParts = (formData.location || '').split(',');
+      locationAddress = formData.location || '';
+      locationDistrict = locationParts[0]?.trim() || '';
+      locationCity = locationParts[1]?.trim() || 'riyadh';
+    }
+
     uploadData.append('location', JSON.stringify({
-      address: formData.location || '',
-      addressAr: formData.location || '',
-      city: city.toLowerCase(),
-      district: district,
+      address: locationAddress,
+      addressAr: locationAddress,
+      city: locationCity.toLowerCase(),
+      district: locationDistrict,
       coordinates: { latitude: null, longitude: null }
     }));
     
@@ -502,7 +515,19 @@ export default function Properties() {
       projectedYield: parseFloat(formData.yield || '0'),
       managementFee: 2.5
     }));
-    
+
+    // Include investment terms if provided
+    if (formData.investmentTerms) {
+      uploadData.append('investmentTerms', JSON.stringify({
+        targetReturn: formData.investmentTerms.targetReturn || 0,
+        rentalYieldRate: formData.investmentTerms.rentalYieldRate,
+        appreciationRate: formData.investmentTerms.appreciationRate,
+        lockingPeriodYears: formData.investmentTerms.lockingPeriodYears,
+        investmentDurationYears: formData.investmentTerms.investmentDurationYears,
+        earlyWithdrawalPenaltyPercentage: formData.investmentTerms.earlyWithdrawalPenaltyPercentage,
+      }));
+    }
+
     // Add new images if they exist
     if (formData.images && formData.images.length > 0) {
       formData.images.forEach((image: any) => {
