@@ -39,6 +39,30 @@ export default function Transactions() {
   const { toast } = useToast()
   const { data: transactionsData, isLoading, error } = useTransactions()
 
+  // Declare all state hooks BEFORE any conditional rendering
+  const [searchTerm, setSearchTerm] = useState("")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [activeTab, setActiveTab] = useState("transactions")
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null)
+  const [authPassword, setAuthPassword] = useState("")
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
+  const [isTransactionDetailOpen, setIsTransactionDetailOpen] = useState(false)
+  const [isWithdrawalDetailOpen, setIsWithdrawalDetailOpen] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState("")
+  const [rejectionComment, setRejectionComment] = useState("")
+  const [pendingAction, setPendingAction] = useState<{ type: 'approve' | 'reject', id: string } | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+
+  // Extract data from API response
+  const transactions = transactionsData?.transactions || []
+  const withdrawalRequests = transactionsData?.withdrawals || []
+
+  // Local state for withdrawal requests to show updates immediately
+  const [localWithdrawals, setLocalWithdrawals] = useState<WithdrawalRequest[]>(withdrawalRequests)
+
   // Handle loading state
   if (isLoading) {
     return (
@@ -63,29 +87,6 @@ export default function Transactions() {
       </div>
     )
   }
-
-  const [searchTerm, setSearchTerm] = useState("")
-  const [typeFilter, setTypeFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [activeTab, setActiveTab] = useState("transactions")
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
-  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null)
-  const [authPassword, setAuthPassword] = useState("")
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
-  const [isTransactionDetailOpen, setIsTransactionDetailOpen] = useState(false)
-  const [isWithdrawalDetailOpen, setIsWithdrawalDetailOpen] = useState(false)
-  const [rejectionReason, setRejectionReason] = useState("")
-  const [rejectionComment, setRejectionComment] = useState("")
-  const [pendingAction, setPendingAction] = useState<{ type: 'approve' | 'reject', id: string } | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [isExporting, setIsExporting] = useState(false)
-
-  // Extract data from API response
-  const transactions = transactionsData?.transactions || []
-  const withdrawalRequests = transactionsData?.withdrawals || []
-
-  // Local state for withdrawal requests to show updates immediately
-  const [localWithdrawals, setLocalWithdrawals] = useState<WithdrawalRequest[]>(withdrawalRequests)
 
   const investorsMap = new Map<string, any>(
     (transactionsData?.transactions || []).map((t: any) => [
