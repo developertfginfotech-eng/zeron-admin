@@ -34,6 +34,11 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
     projectedYield: initialData?.projectedYield || "",
     monthlyRental: initialData?.monthlyRental || "",
     minInvestment: initialData?.minInvestment || "",
+    // Investment Terms - Property Specific
+    rentalYieldRate: initialData?.investmentTerms?.rentalYieldRate || "",
+    appreciationRate: initialData?.investmentTerms?.appreciationRate || "",
+    lockingPeriodYears: initialData?.investmentTerms?.lockingPeriodYears || "",
+    earlyWithdrawalPenaltyPercentage: initialData?.investmentTerms?.earlyWithdrawalPenaltyPercentage || "",
   })
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
@@ -120,6 +125,12 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
       projectedYield: formData.projectedYield,
       monthlyRental: formData.monthlyRental,
       minInvestment: formData.minInvestment,
+      investmentTerms: {
+        rentalYieldRate: formData.rentalYieldRate,
+        appreciationRate: formData.appreciationRate,
+        lockingPeriodYears: formData.lockingPeriodYears,
+        earlyWithdrawalPenaltyPercentage: formData.earlyWithdrawalPenaltyPercentage,
+      },
       files: selectedFiles.length
     })
 
@@ -130,7 +141,7 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
       description: formData.description,
       propertyType: formData.propertyType,
       status: formData.status,
-      
+
       // Location object
       location: {
         address: formData.location,
@@ -139,7 +150,7 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
         district: formData.location.split(",")[0]?.trim() || "",
         coordinates: { latitude: null, longitude: null },
       },
-      
+
       // Financials object
       financials: {
         totalValue: parseFloat(formData.totalValue) || parseFloat(formData.price) || 0,
@@ -153,7 +164,17 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
         pricePerShare: parseFloat(formData.pricePerShare) || (parseFloat(formData.price) || 0) / 100,
         monthlyRental: parseFloat(formData.monthlyRental) || 0,
       },
-      
+
+      // Investment Terms - Property Specific Settings
+      investmentTerms: {
+        targetReturn: parseFloat(formData.projectedYield) || 0,
+        rentalYieldRate: formData.rentalYieldRate ? parseFloat(formData.rentalYieldRate) : null,
+        appreciationRate: formData.appreciationRate ? parseFloat(formData.appreciationRate) : null,
+        lockingPeriodYears: formData.lockingPeriodYears ? parseFloat(formData.lockingPeriodYears) : null,
+        investmentDurationYears: formData.lockingPeriodYears ? parseFloat(formData.lockingPeriodYears) : null,
+        earlyWithdrawalPenaltyPercentage: formData.earlyWithdrawalPenaltyPercentage ? parseFloat(formData.earlyWithdrawalPenaltyPercentage) : null,
+      },
+
       // Files array
       images: selectedFiles
     }
@@ -300,6 +321,65 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
                     value={formData.minInvestment}
                     onChange={(e) => handleInputChange("minInvestment", e.target.value)}
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* Investment Terms - Property Specific */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Investment Terms (Optional - Leave empty to use global defaults)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rentalYieldRate">Annual Rental Yield (%)</Label>
+                  <Input
+                    id="rentalYieldRate"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g., 8 (default: 8%)"
+                    value={formData.rentalYieldRate}
+                    onChange={(e) => handleInputChange("rentalYieldRate", e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Income earned annually during locking period</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="appreciationRate">Annual Appreciation Rate (%)</Label>
+                  <Input
+                    id="appreciationRate"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g., 3 (default: 3%)"
+                    value={formData.appreciationRate}
+                    onChange={(e) => handleInputChange("appreciationRate", e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Property value growth after maturity</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lockingPeriodYears">Locking Period (Years)</Label>
+                  <Input
+                    id="lockingPeriodYears"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="e.g., 5 (default: 5 years)"
+                    value={formData.lockingPeriodYears}
+                    onChange={(e) => handleInputChange("lockingPeriodYears", e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Minimum hold period before withdrawal</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="earlyWithdrawalPenaltyPercentage">Early Withdrawal Penalty (%)</Label>
+                  <Input
+                    id="earlyWithdrawalPenaltyPercentage"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g., 5 (default: 5%)"
+                    value={formData.earlyWithdrawalPenaltyPercentage}
+                    onChange={(e) => handleInputChange("earlyWithdrawalPenaltyPercentage", e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Penalty if withdrawn before maturity</p>
                 </div>
               </div>
             </div>
