@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,23 +7,27 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Settings as SettingsIcon, 
-  Bell, 
-  Shield, 
-  Globe, 
+import {
+  Settings as SettingsIcon,
+  Bell,
+  Shield,
+  Globe,
   Database,
   Mail,
   Smartphone,
   Save,
-  RefreshCw
+  RefreshCw,
+  TrendingUp,
+  AlertCircle,
+  Loader2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useInvestmentSettings } from "@/hooks/use-investment-settings"
 
 export default function Settings() {
   const { toast } = useToast()
-  
-  // todo: remove mock functionality
+  const { settings: investmentSettings, loading: investmentLoading, error: investmentError, updateSettings: updateInvestmentSettings } = useInvestmentSettings()
+
   const [settings, setSettings] = useState({
     // General Settings
     platformName: 'Zaron',
@@ -31,26 +35,26 @@ export default function Settings() {
     timezone: 'Asia/Riyadh',
     dateFormat: 'DD/MM/YYYY',
     currency: 'SAR',
-    
+
     // Notification Settings
     emailNotifications: true,
     smsNotifications: false,
     pushNotifications: true,
     weeklyReports: true,
-    
+
     // Security Settings
     twoFactorAuth: true,
     sessionTimeout: '8',
     passwordPolicy: 'strong',
     ipWhitelist: true,
-    
+
     // Business Settings
     minimumInvestment: '10000',
     maximumInvestment: '1000000',
     platformFee: '2.5',
     kycRequirement: true,
     autoApproval: false,
-    
+
     // Integration Settings
     emailProvider: 'sendgrid',
     smsProvider: 'twilio',
@@ -59,24 +63,79 @@ export default function Settings() {
   })
 
   const [isSaving, setIsSaving] = useState(false)
+  const [investmentSettingsLocal, setInvestmentSettingsLocal] = useState({
+    rentalYieldPercentage: 8,
+    appreciationRatePercentage: 3,
+    maturityPeriodYears: 5,
+    investmentDurationYears: 5,
+    earlyWithdrawalPenaltyPercentage: 5,
+    platformFeePercentage: 2.5,
+    minInvestmentAmount: 10000,
+    maxInvestmentAmount: 1000000
+  })
+  const [isSavingInvestmentSettings, setIsSavingInvestmentSettings] = useState(false)
+
+  // Update local state when API data loads
+  useEffect(() => {
+    if (investmentSettings) {
+      setInvestmentSettingsLocal({
+        rentalYieldPercentage: investmentSettings.rentalYieldPercentage || 8,
+        appreciationRatePercentage: investmentSettings.appreciationRatePercentage || 3,
+        maturityPeriodYears: investmentSettings.maturityPeriodYears || 5,
+        investmentDurationYears: investmentSettings.investmentDurationYears || 5,
+        earlyWithdrawalPenaltyPercentage: investmentSettings.earlyWithdrawalPenaltyPercentage || 5,
+        platformFeePercentage: investmentSettings.platformFeePercentage || 2.5,
+        minInvestmentAmount: investmentSettings.minInvestmentAmount || 10000,
+        maxInvestmentAmount: investmentSettings.maxInvestmentAmount || 1000000
+      })
+    }
+  }, [investmentSettings])
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }))
   }
 
+  const handleInvestmentSettingChange = (key: string, value: any) => {
+    setInvestmentSettingsLocal(prev => ({ ...prev, [key]: parseFloat(value) || value }))
+  }
+
   const handleSaveSettings = async () => {
     setIsSaving(true)
     console.log('Saving settings:', settings)
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
     toast({
       title: "Settings Saved",
       description: "All settings have been successfully updated.",
     })
-    
+
     setIsSaving(false)
+  }
+
+  const handleSaveInvestmentSettings = async () => {
+    setIsSavingInvestmentSettings(true)
+    try {
+      await updateInvestmentSettings({
+        ...investmentSettings,
+        ...investmentSettingsLocal,
+        _id: investmentSettings?._id
+      })
+
+      toast({
+        title: "Investment Settings Saved",
+        description: "Investment settings have been successfully updated.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save investment settings. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingInvestmentSettings(false)
+    }
   }
 
   const handleResetToDefaults = () => {
@@ -382,6 +441,179 @@ export default function Settings() {
                 data-testid="switch-auto-approval"
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Investment Settings */}
+        <Card data-testid="card-investment-settings" className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="space-y-2">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Investment Settings
+              </CardTitle>
+              <CardDescription>Configure dynamic investment rates and parameters</CardDescription>
+            </div>
+            {investmentError && (
+              <div className="flex items-center gap-2 text-red-600 text-sm">
+                <AlertCircle className="h-4 w-4" />
+                Error loading settings
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {investmentLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
+                <span className="text-muted-foreground">Loading investment settings...</span>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rentalYield">Rental Yield Percentage (%)</Label>
+                    <Input
+                      id="rentalYield"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={investmentSettingsLocal.rentalYieldPercentage}
+                      onChange={(e) => handleInvestmentSettingChange('rentalYieldPercentage', e.target.value)}
+                      data-testid="input-rental-yield"
+                    />
+                    <p className="text-xs text-muted-foreground">Annual rental income percentage</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="appreciation">Appreciation Rate Percentage (%)</Label>
+                    <Input
+                      id="appreciation"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={investmentSettingsLocal.appreciationRatePercentage}
+                      onChange={(e) => handleInvestmentSettingChange('appreciationRatePercentage', e.target.value)}
+                      data-testid="input-appreciation-rate"
+                    />
+                    <p className="text-xs text-muted-foreground">Property appreciation per year</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="maturityPeriod">Maturity Period (Years)</Label>
+                    <Input
+                      id="maturityPeriod"
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="50"
+                      value={investmentSettingsLocal.maturityPeriodYears}
+                      onChange={(e) => handleInvestmentSettingChange('maturityPeriodYears', e.target.value)}
+                      data-testid="input-maturity-period"
+                    />
+                    <p className="text-xs text-muted-foreground">Investment maturity period</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="earlyWithdrawalPenalty">Early Withdrawal Penalty (%)</Label>
+                    <Input
+                      id="earlyWithdrawalPenalty"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={investmentSettingsLocal.earlyWithdrawalPenaltyPercentage}
+                      onChange={(e) => handleInvestmentSettingChange('earlyWithdrawalPenaltyPercentage', e.target.value)}
+                      data-testid="input-early-withdrawal-penalty"
+                    />
+                    <p className="text-xs text-muted-foreground">Penalty for early withdrawal</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="platformFeeInvestment">Platform Fee Percentage (%)</Label>
+                    <Input
+                      id="platformFeeInvestment"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={investmentSettingsLocal.platformFeePercentage}
+                      onChange={(e) => handleInvestmentSettingChange('platformFeePercentage', e.target.value)}
+                      data-testid="input-platform-fee-investment"
+                    />
+                    <p className="text-xs text-muted-foreground">Platform transaction fee</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="investmentDuration">Investment Duration (Years)</Label>
+                    <Input
+                      id="investmentDuration"
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="50"
+                      value={investmentSettingsLocal.investmentDurationYears}
+                      onChange={(e) => handleInvestmentSettingChange('investmentDurationYears', e.target.value)}
+                      data-testid="input-investment-duration"
+                    />
+                    <p className="text-xs text-muted-foreground">Default investment duration</p>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="minInvestment">Minimum Investment Amount (SAR)</Label>
+                    <Input
+                      id="minInvestment"
+                      type="number"
+                      step="1000"
+                      min="0"
+                      value={investmentSettingsLocal.minInvestmentAmount}
+                      onChange={(e) => handleInvestmentSettingChange('minInvestmentAmount', e.target.value)}
+                      data-testid="input-min-investment"
+                    />
+                    <p className="text-xs text-muted-foreground">Minimum investment per transaction</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="maxInvestment">Maximum Investment Amount (SAR)</Label>
+                    <Input
+                      id="maxInvestment"
+                      type="number"
+                      step="1000"
+                      min="0"
+                      value={investmentSettingsLocal.maxInvestmentAmount}
+                      onChange={(e) => handleInvestmentSettingChange('maxInvestmentAmount', e.target.value)}
+                      data-testid="input-max-investment"
+                    />
+                    <p className="text-xs text-muted-foreground">Maximum investment per transaction</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    onClick={handleSaveInvestmentSettings}
+                    disabled={isSavingInvestmentSettings}
+                    data-testid="button-save-investment-settings"
+                  >
+                    {isSavingInvestmentSettings ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Investment Settings
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -6,63 +6,38 @@ import { AiChatWidget } from "@/components/ai-chat-widget"
 import { AiInsightsPanel } from "@/components/ai-insights-panel"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Users, 
-  Building2, 
-  TrendingUp, 
-  DollarSign, 
+import {
+  Users,
+  Building2,
+  TrendingUp,
+  DollarSign,
   Clock,
   CheckCircle,
   XCircle,
   Brain,
   Zap,
-  Target
+  Target,
+  AlertCircle,
+  Loader2
 } from "lucide-react"
 import { Link } from "wouter"
+import { useDashboardData } from "@/hooks/use-dashboard-data"
 
 export default function Dashboard() {
-  // todo: remove mock functionality
   const [refreshing, setRefreshing] = useState(false)
+  const { stats, monthlyInvestments, userGrowth, recentTransactions, pendingKyc, loading, error, refetch } = useDashboardData()
 
   const handleRefresh = async () => {
     setRefreshing(true)
     console.log('Dashboard refresh triggered')
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setRefreshing(false)
+    try {
+      await refetch()
+    } catch (err) {
+      console.error('Failed to refresh dashboard:', err)
+    } finally {
+      setRefreshing(false)
+    }
   }
-
-  // todo: remove mock functionality
-  const monthlyInvestments = [
-    { name: 'Jan', value: 2400000 },
-    { name: 'Feb', value: 2210000 },
-    { name: 'Mar', value: 2290000 },
-    { name: 'Apr', value: 2000000 },
-    { name: 'May', value: 2181000 },
-    { name: 'Jun', value: 2500000 },
-    { name: 'Jul', value: 2100000 },
-  ]
-
-  const userGrowth = [
-    { name: 'Jan', value: 120 },
-    { name: 'Feb', value: 150 },
-    { name: 'Mar', value: 180 },
-    { name: 'Apr', value: 200 },
-    { name: 'May', value: 240 },
-    { name: 'Jun', value: 280 },
-    { name: 'Jul', value: 320 },
-  ]
-
-  const recentTransactions = [
-    { id: '1', user: 'Ahmed Al-Rashid', property: 'Luxury Apartments', amount: 50000, type: 'investment' },
-    { id: '2', user: 'Sarah Johnson', property: 'Office Tower', amount: 75000, type: 'investment' },
-    { id: '3', user: 'Mohammad Al-Zahra', property: 'Retail Complex', amount: 15000, type: 'withdrawal' },
-  ]
-
-  const pendingKyc = [
-    { id: '1', name: 'Fatima Al-Qasimi', documents: 'National ID, Selfie', status: 'pending' },
-    { id: '2', name: 'Omar Hassan', documents: 'Passport, Income Proof', status: 'pending' },
-    { id: '3', name: 'Layla Mahmoud', documents: 'Iqama, Employment Letter', status: 'review' },
-  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 modern-scrollbar">
@@ -90,34 +65,52 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Users"
-          value="2,847"
-          change="+12% from last month"
-          changeType="positive"
-          icon={Users}
-        />
-        <StatCard
-          title="Active Properties"
-          value="24"
-          change="+3 new this week"
-          changeType="positive"
-          icon={Building2}
-        />
-        <StatCard
-          title="Total Investments"
-          value="SAR 14.2M"
-          change="+8% from last month"
-          changeType="positive"
-          icon={TrendingUp}
-        />
-        <StatCard
-          title="Monthly Revenue"
-          value="SAR 890K"
-          change="-2% from last month"
-          changeType="negative"
-          icon={DollarSign}
-        />
+        {loading ? (
+          <>
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-2" />
+              <span className="text-muted-foreground">Loading dashboard data...</span>
+            </div>
+          </>
+        ) : error ? (
+          <>
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 flex items-center justify-center py-8 text-red-600">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              <span>Failed to load dashboard data. Please try refreshing.</span>
+            </div>
+          </>
+        ) : stats ? (
+          <>
+            <StatCard
+              title="Total Users"
+              value={stats.totalUsers?.toLocaleString() || "0"}
+              change={`${stats.userChange >= 0 ? '+' : ''}${stats.userChange}% from last month`}
+              changeType={stats.userChange >= 0 ? "positive" : "negative"}
+              icon={Users}
+            />
+            <StatCard
+              title="Active Properties"
+              value={stats.activeProperties?.toString() || "0"}
+              change={`${stats.propertyChange >= 0 ? '+' : ''}${stats.propertyChange} from last month`}
+              changeType={stats.propertyChange >= 0 ? "positive" : "negative"}
+              icon={Building2}
+            />
+            <StatCard
+              title="Total Investments"
+              value={`SAR ${(stats.totalInvestments / 1000000).toFixed(1)}M` || "SAR 0"}
+              change={`${stats.investmentChange >= 0 ? '+' : ''}${stats.investmentChange}% from last month`}
+              changeType={stats.investmentChange >= 0 ? "positive" : "negative"}
+              icon={TrendingUp}
+            />
+            <StatCard
+              title="Monthly Revenue"
+              value={`SAR ${(stats.monthlyRevenue / 1000).toFixed(0)}K` || "SAR 0"}
+              change={`${stats.revenueChange >= 0 ? '+' : ''}${stats.revenueChange}% from last month`}
+              changeType={stats.revenueChange >= 0 ? "positive" : "negative"}
+              icon={DollarSign}
+            />
+          </>
+        ) : null}
       </div>
 
       {/* AI Insights Panel */}
@@ -157,20 +150,31 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between" data-testid={`transaction-${transaction.id}`}>
-                  <div>
-                    <p className="font-medium">{transaction.user}</p>
-                    <p className="text-sm text-muted-foreground">{transaction.property}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono">SAR {transaction.amount.toLocaleString()}</p>
-                    <Badge variant={transaction.type === 'investment' ? 'default' : 'secondary'}>
-                      {transaction.type}
-                    </Badge>
-                  </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
+                  <span className="text-muted-foreground">Loading transactions...</span>
                 </div>
-              ))}
+              ) : recentTransactions.length === 0 ? (
+                <div className="flex items-center justify-center py-6 text-muted-foreground">
+                  <p>No recent transactions</p>
+                </div>
+              ) : (
+                recentTransactions.map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between" data-testid={`transaction-${transaction.id}`}>
+                    <div>
+                      <p className="font-medium">{transaction.user}</p>
+                      <p className="text-sm text-muted-foreground">{transaction.property}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono">SAR {transaction.amount.toLocaleString()}</p>
+                      <Badge variant={transaction.type === 'investment' ? 'default' : 'secondary'}>
+                        {transaction.type}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -189,24 +193,35 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {pendingKyc.map((kyc) => (
-                <div key={kyc.id} className="flex items-center justify-between" data-testid={`kyc-${kyc.id}`}>
-                  <div>
-                    <p className="font-medium">{kyc.name}</p>
-                    <p className="text-sm text-muted-foreground">{kyc.documents}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {kyc.status === 'pending' ? (
-                      <Clock className="h-4 w-4 text-yellow-600" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                    )}
-                    <Badge variant={kyc.status === 'pending' ? 'secondary' : 'default'}>
-                      {kyc.status}
-                    </Badge>
-                  </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
+                  <span className="text-muted-foreground">Loading KYC reviews...</span>
                 </div>
-              ))}
+              ) : pendingKyc.length === 0 ? (
+                <div className="flex items-center justify-center py-6 text-muted-foreground">
+                  <p>No pending KYC reviews</p>
+                </div>
+              ) : (
+                pendingKyc.map((kyc) => (
+                  <div key={kyc.id} className="flex items-center justify-between" data-testid={`kyc-${kyc.id}`}>
+                    <div>
+                      <p className="font-medium">{kyc.name}</p>
+                      <p className="text-sm text-muted-foreground">{kyc.documents}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {kyc.status === 'pending' ? (
+                        <Clock className="h-4 w-4 text-yellow-600" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                      )}
+                      <Badge variant={kyc.status === 'pending' ? 'secondary' : 'default'}>
+                        {kyc.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

@@ -52,6 +52,13 @@ export const API_ENDPOINTS = {
     LIST: '/api/properties',
     GET: (id: string) => `/api/properties/${id}`,
     SEARCH: '/api/properties/search'
+  },
+
+  // Investment settings endpoints
+  INVESTMENTS: {
+    GET_SETTINGS: '/api/investments/settings',
+    CREATE_SETTINGS: '/api/investments/settings',
+    UPDATE_SETTINGS: (id: string) => `/api/investments/settings/${id}`
   }
 };
 
