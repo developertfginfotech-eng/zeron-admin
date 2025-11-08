@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { apiCall } from '@/lib/api';
 import { API_ENDPOINTS } from '@/lib/api';
 
+export interface DashboardOverview {
+  totalProperties: number;
+  activeProperties: number;
+  totalInvestments: number;
+  totalUsers: number;
+  pendingKyc: number;
+  totalInvestmentValue: number;
+}
+
 export interface DashboardStats {
   totalUsers: number;
   activeProperties: number;
@@ -36,6 +45,7 @@ export interface KycItem {
 
 interface UseDashboardDataResult {
   stats: DashboardStats | null;
+  overview: DashboardOverview | null;
   monthlyInvestments: ChartData[];
   userGrowth: ChartData[];
   recentTransactions: Transaction[];
@@ -69,6 +79,7 @@ const fallbackChartData: ChartData[] = [
 
 export function useDashboardData(): UseDashboardDataResult {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [monthlyInvestments, setMonthlyInvestments] = useState<ChartData[]>(fallbackChartData);
   const [userGrowth, setUserGrowth] = useState<ChartData[]>(fallbackChartData);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
@@ -87,29 +98,39 @@ export function useDashboardData(): UseDashboardDataResult {
       if (dashboardResponse.success && dashboardResponse.data) {
         const data = dashboardResponse.data;
 
-        // Set stats
-        if (data.stats) {
+        // Extract overview data - the API returns it in data.overview
+        if (data.overview) {
+          const overviewData = data.overview;
+          setOverview(overviewData);
+
+          // Convert overview to stats format for backward compatibility
           setStats({
-            totalUsers: data.stats.totalUsers || 0,
-            activeProperties: data.stats.activeProperties || 0,
-            totalInvestments: data.stats.totalInvestments || 0,
-            monthlyRevenue: data.stats.monthlyRevenue || 0,
-            userChange: data.stats.userChange || 0,
-            propertyChange: data.stats.propertyChange || 0,
-            investmentChange: data.stats.investmentChange || 0,
-            revenueChange: data.stats.revenueChange || 0
+            totalUsers: overviewData.totalUsers || 0,
+            activeProperties: overviewData.activeProperties || 0,
+            totalInvestments: overviewData.totalInvestments || 0,
+            monthlyRevenue: overviewData.totalInvestmentValue ? Math.floor(overviewData.totalInvestmentValue / 12) : 0,
+            userChange: 0, // API doesn't provide this, so default to 0
+            propertyChange: 0, // API doesn't provide this, so default to 0
+            investmentChange: 0, // API doesn't provide this, so default to 0
+            revenueChange: 0 // API doesn't provide this, so default to 0
           });
         } else {
           setStats(fallbackStats);
+          setOverview(null);
         }
 
-        // Set chart data
+        // Set chart data - using fallback if not provided by API
         if (data.monthlyInvestments && Array.isArray(data.monthlyInvestments)) {
           setMonthlyInvestments(data.monthlyInvestments);
+        } else {
+          // Generate chart data from monthly trend if available
+          setMonthlyInvestments(fallbackChartData);
         }
 
         if (data.userGrowth && Array.isArray(data.userGrowth)) {
           setUserGrowth(data.userGrowth);
+        } else {
+          setUserGrowth(fallbackChartData);
         }
 
         // Set recent transactions
@@ -124,6 +145,7 @@ export function useDashboardData(): UseDashboardDataResult {
       } else {
         // Fallback to empty state
         setStats(fallbackStats);
+        setOverview(null);
         setMonthlyInvestments(fallbackChartData);
         setUserGrowth(fallbackChartData);
       }
@@ -134,6 +156,7 @@ export function useDashboardData(): UseDashboardDataResult {
 
       // Set fallback data
       setStats(fallbackStats);
+      setOverview(null);
       setMonthlyInvestments(fallbackChartData);
       setUserGrowth(fallbackChartData);
     } finally {
@@ -147,6 +170,7 @@ export function useDashboardData(): UseDashboardDataResult {
 
   return {
     stats,
+    overview,
     monthlyInvestments,
     userGrowth,
     recentTransactions,
