@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,164 +27,43 @@ import {
   BarChart3,
   FileText,
   Lock,
-  Users,
-  Building2,
   CreditCard,
-  Calendar,
-  MapPin,
   Loader2
 } from "lucide-react"
-import { Transaction, WithdrawalRequest, Investor } from "@shared/schema"
+import { Transaction, WithdrawalRequest } from "@shared/schema"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
-import { useQuery } from '@tanstack/react-query'
-
-// Mock data for enhanced transactions with investor details
-const mockInvestors: Investor[] = [
-  {
-    id: 'investor-1',
-    name: 'Ahmed Al-Mahmoud',
-    email: 'ahmed.mahmoud@email.com',
-    phone: '+966 50 123 4567',
-    kycStatus: 'approved',
-    totalInvested: '275000',
-    activeProperties: 3,
-    monthlyIncome: '15000',
-    nationality: 'Saudi Arabia',
-    documentsUploaded: true,
-    firstName: 'Ahmed',
-    lastName: 'Al-Mahmoud',
-    salutation: 'Mr',
-    gender: 'male',
-    dateOfBirth: new Date('1985-03-15'),
-    occupation: 'Business Executive',
-    jobCategory: 'executive',
-    jobTitle: 'CEO',
-    company: 'Al-Mahmoud Holdings',
-    workExperience: 15,
-    city: 'Riyadh',
-    country: 'Saudi Arabia',
-    address: '123 King Abdul Aziz Road, Riyadh, Saudi Arabia',
-    profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    applicationProgress: 100,
-    appDownloadedAt: new Date('2023-06-01'),
-    kycSubmittedAt: new Date('2023-06-10'),
-    aiRiskScore: 15,
-    investorTier: 'top',
-    preferredLanguage: 'ar',
-    languagesSpoken: ['ar', 'en'],
-    createdAt: new Date('2023-06-15'),
-    updatedAt: new Date('2024-01-20'),
-  },
-  {
-    id: 'investor-2', 
-    name: 'Fatima Al-Zahra',
-    email: 'fatima.zahra@email.com',
-    phone: '+966 55 987 6543',
-    kycStatus: 'approved',
-    totalInvested: '150000',
-    activeProperties: 2,
-    monthlyIncome: '12000',
-    nationality: 'UAE',
-    documentsUploaded: true,
-    firstName: 'Fatima',
-    lastName: 'Al-Zahra',
-    salutation: 'Ms',
-    gender: 'female',
-    dateOfBirth: new Date('1990-07-22'),
-    occupation: 'Senior Manager',
-    jobCategory: 'management',
-    jobTitle: 'Marketing Director',
-    company: 'Emirates Business Group',
-    workExperience: 8,
-    city: 'Dubai',
-    country: 'UAE',
-    address: '456 Sheikh Zayed Road, Dubai, UAE',
-    profilePicture: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-    applicationProgress: 100,
-    appDownloadedAt: new Date('2023-07-15'),
-    kycSubmittedAt: new Date('2023-08-05'),
-    aiRiskScore: 25,
-    investorTier: 'medium',
-    preferredLanguage: 'en',
-    languagesSpoken: ['ar', 'en'],
-    createdAt: new Date('2023-08-10'),
-    updatedAt: new Date('2024-01-19'),
-  },
-  {
-    id: 'investor-3',
-    name: 'Omar Hassan',
-    email: 'omar.hassan@email.com', 
-    phone: '+966 56 456 7890',
-    kycStatus: 'approved',
-    totalInvested: '95000',
-    activeProperties: 1,
-    monthlyIncome: '8500',
-    nationality: 'Kuwait',
-    documentsUploaded: true,
-    firstName: 'Omar',
-    lastName: 'Hassan',
-    salutation: 'Mr',
-    gender: 'male',
-    dateOfBirth: new Date('1988-12-03'),
-    occupation: 'Professional',
-    jobCategory: 'professional',
-    jobTitle: 'Software Engineer',
-    company: 'Kuwait Tech Solutions',
-    workExperience: 6,
-    city: 'Kuwait City',
-    country: 'Kuwait',
-    address: '789 Al-Fahad Street, Kuwait City, Kuwait',
-    profilePicture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    applicationProgress: 100,
-    appDownloadedAt: new Date('2023-09-01'),
-    kycSubmittedAt: new Date('2023-09-18'),
-    aiRiskScore: 35,
-    investorTier: 'medium',
-    preferredLanguage: 'en',
-    languagesSpoken: ['ar', 'en'],
-    createdAt: new Date('2023-09-22'),
-    updatedAt: new Date('2024-01-18'),
-  },
-  {
-    id: 'investor-4',
-    name: 'Sarah Al-Qasimi',
-    email: 'sarah.qasimi@email.com',
-    phone: '+966 53 345 6789',
-    kycStatus: 'approved',
-    totalInvested: '320000',
-    activeProperties: 4,
-    monthlyIncome: '18000',
-    nationality: 'Qatar',
-    documentsUploaded: true,
-    firstName: 'Sarah',
-    lastName: 'Al-Qasimi',
-    salutation: 'Ms',
-    gender: 'female',
-    dateOfBirth: new Date('1982-11-28'),
-    occupation: 'Executive',
-    jobCategory: 'executive',
-    jobTitle: 'Investment Director',
-    company: 'Qatar Investment Fund',
-    workExperience: 12,
-    city: 'Doha',
-    country: 'Qatar',
-    address: '321 Corniche Street, Doha, Qatar',
-    profilePicture: 'https://images.unsplash.com/photo-1494790108755-2616b5b0c8d1?w=150&h=150&fit=crop&crop=face',
-    applicationProgress: 100,
-    appDownloadedAt: new Date('2023-10-20'),
-    kycSubmittedAt: new Date('2023-11-02'),
-    aiRiskScore: 8,
-    investorTier: 'top',
-    preferredLanguage: 'en',
-    languagesSpoken: ['ar', 'en', 'fr'],
-    createdAt: new Date('2023-11-05'),
-    updatedAt: new Date('2024-01-17'),
-  }
-]
+import { useTransactions } from "@/hooks/use-transactions"
 
 export default function Transactions() {
   const { toast } = useToast()
+  const { data: transactionsData, isLoading, error } = useTransactions()
+
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading transaction data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <AlertTriangle className="h-8 w-8 mx-auto text-red-500" />
+          <p className="text-red-600">Failed to load transactions</p>
+          <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+        </div>
+      </div>
+    )
+  }
+
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -201,185 +80,26 @@ export default function Transactions() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
-  // Enhanced transactions data with state management
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: 'tx-001',
-      investorId: 'investor-1',
-      propertyId: 'property-1',
-      type: 'investment',
-      amount: '150000',
-      fee: '750',
-      description: 'Initial investment in Al-Noor Residential Complex',
-      reference: 'TXN-2024-001',
-      status: 'completed',
-      paymentMethod: 'bank_transfer',
-      bankDetails: JSON.stringify({ bank: 'Al Rajhi Bank', account: '****1234' }),
-      processedAt: new Date('2024-01-16T10:30:00Z'),
-      processedBy: 'admin-1',
-      rejectionReason: null,
-      rejectionComment: null,
-      aiAnalysis: 'Low risk transaction. Investor has excellent payment history.',
-      aiRiskScore: 15,
-      aiRecommendation: 'Approved - Standard processing',
-      createdAt: new Date('2024-01-15T09:00:00Z'),
-      updatedAt: new Date('2024-01-16T10:30:00Z'),
-    },
-    {
-      id: 'tx-002',
-      investorId: 'investor-2',
-      propertyId: 'property-2',
-      type: 'payout',
-      amount: '8250',
-      fee: '0',
-      description: 'Quarterly dividend payment',
-      reference: 'TXN-2024-002',
-      status: 'completed',
-      paymentMethod: 'bank_transfer',
-      bankDetails: JSON.stringify({ bank: 'Emirates NBD', account: '****5678' }),
-      processedAt: new Date('2024-01-20T14:22:00Z'),
-      processedBy: 'admin-2',
-      rejectionReason: null,
-      rejectionComment: null,
-      aiAnalysis: 'Regular dividend payout. No anomalies detected.',
-      aiRiskScore: 5,
-      aiRecommendation: 'Auto-approved - Scheduled payment',
-      createdAt: new Date('2024-01-20T08:00:00Z'),
-      updatedAt: new Date('2024-01-20T14:22:00Z'),
-    },
-    {
-      id: 'tx-003',
-      investorId: 'investor-3',
-      propertyId: 'property-1',
-      type: 'investment',
-      amount: '95000',
-      fee: '475',
-      description: 'Secondary investment opportunity',
-      reference: 'TXN-2024-003',
-      status: 'pending',
-      paymentMethod: 'bank_transfer',
-      bankDetails: null,
-      processedAt: null,
-      processedBy: null,
-      rejectionReason: null,
-      rejectionComment: null,
-      aiAnalysis: 'Medium risk. Investor tier: medium. Recommended for manual review.',
-      aiRiskScore: 35,
-      aiRecommendation: 'Manual review required - Medium risk investor',
-      createdAt: new Date('2024-02-01T11:15:00Z'),
-      updatedAt: new Date('2024-02-01T11:15:00Z'),
-    },
-    {
-      id: 'tx-004',
-      investorId: 'investor-4',
-      propertyId: 'property-3',
-      type: 'investment',
-      amount: '275000',
-      fee: '1375',
-      description: 'Premium investment in Marina Tower',
-      reference: 'TXN-2024-004',
-      status: 'completed',
-      paymentMethod: 'bank_transfer',
-      bankDetails: JSON.stringify({ bank: 'Qatar National Bank', account: '****9012' }),
-      processedAt: new Date('2024-02-05T16:45:00Z'),
-      processedBy: 'admin-1',
-      rejectionReason: null,
-      rejectionComment: null,
-      aiAnalysis: 'High-value transaction from top-tier investor. Excellent risk profile.',
-      aiRiskScore: 8,
-      aiRecommendation: 'Fast-track approved - Top tier investor',
-      createdAt: new Date('2024-02-05T09:30:00Z'),
-      updatedAt: new Date('2024-02-05T16:45:00Z'),
-    }
-  ])
+  // Extract data from API response
+  const transactions = transactionsData?.transactions || []
+  const withdrawalRequests = transactionsData?.withdrawals || []
 
-  // Withdrawal requests data with state management
-  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([
-    {
-      id: 'wd-001',
-      investorId: 'investor-2',
-      amount: '25000',
-      reason: 'Emergency medical expenses',
-      bankAccount: JSON.stringify({ 
-        bank: 'Emirates NBD', 
-        account: 'AE070331234567890123456',
-        iban: 'AE070331234567890123456',
-        beneficiary: 'Fatima Al-Zahra'
-      }),
-      status: 'pending',
-      requestedAt: new Date('2024-02-08T10:00:00Z'),
-      reviewedAt: null,
-      reviewedBy: null,
-      rejectionReason: null,
-      rejectionComment: null,
-      processedAt: null,
-      transactionId: null,
-      aiAnalysis: 'Medium priority withdrawal. Investor has sufficient balance.',
-      aiRiskScore: 25,
-      aiRecommendation: 'Approve with documentation - Medical emergency',
-      priority: 'high',
-      createdAt: new Date('2024-02-08T10:00:00Z'),
-      updatedAt: new Date('2024-02-08T10:00:00Z'),
-    },
-    {
-      id: 'wd-002',
-      investorId: 'investor-1',
-      amount: '50000',
-      reason: 'Partial portfolio rebalancing',
-      bankAccount: JSON.stringify({
-        bank: 'Al Rajhi Bank',
-        account: 'SA0380000000608010167519',
-        iban: 'SA0380000000608010167519',
-        beneficiary: 'Ahmed Al-Mahmoud'
-      }),
-      status: 'approved',
-      requestedAt: new Date('2024-02-06T14:30:00Z'),
-      reviewedAt: new Date('2024-02-06T15:45:00Z'),
-      reviewedBy: 'admin-1',
-      rejectionReason: null,
-      rejectionComment: null,
-      processedAt: new Date('2024-02-07T09:00:00Z'),
-      transactionId: 'tx-005',
-      aiAnalysis: 'Standard withdrawal from high-tier investor. No red flags.',
-      aiRiskScore: 12,
-      aiRecommendation: 'Auto-approve - Top tier investor, standard amount',
-      priority: 'normal',
-      createdAt: new Date('2024-02-06T14:30:00Z'),
-      updatedAt: new Date('2024-02-07T09:00:00Z'),
-    },
-    {
-      id: 'wd-003',
-      investorId: 'investor-3',
-      amount: '15000',
-      reason: 'Personal investment opportunity',
-      bankAccount: JSON.stringify({
-        bank: 'Kuwait Finance House',
-        account: 'KW81CBKU0000000000001234560101',
-        iban: 'KW81CBKU0000000000001234560101', 
-        beneficiary: 'Omar Hassan'
-      }),
-      status: 'rejected',
-      requestedAt: new Date('2024-02-05T16:20:00Z'),
-      reviewedAt: new Date('2024-02-05T17:30:00Z'),
-      reviewedBy: 'admin-2',
-      rejectionReason: 'insufficient_funds',
-      rejectionComment: 'Current portfolio balance insufficient for requested withdrawal amount. Please consider a smaller amount.',
-      processedAt: null,
-      transactionId: null,
-      aiAnalysis: 'Withdrawal amount exceeds available liquid funds. High risk.',
-      aiRiskScore: 75,
-      aiRecommendation: 'Reject - Insufficient liquid balance',
-      priority: 'normal',
-      createdAt: new Date('2024-02-05T16:20:00Z'),
-      updatedAt: new Date('2024-02-05T17:30:00Z'),
-    }
-  ])
+  // Local state for withdrawal requests to show updates immediately
+  const [localWithdrawals, setLocalWithdrawals] = useState<WithdrawalRequest[]>(withdrawalRequests)
 
-  const getInvestorById = (id: string) => mockInvestors.find(inv => inv.id === id)
+  const investorsMap = new Map<string, any>(
+    (transactionsData?.transactions || []).map((t: any) => [
+      t.investorId,
+      t.investor || {} // investor object populated from backend
+    ])
+  )
 
-  const filteredTransactions = transactions.filter(transaction => {
+  const getInvestorById = (id: string): any => investorsMap.get(id) || {}
+
+  const filteredTransactions = transactions.filter((transaction: any) => {
     const investor = getInvestorById(transaction.investorId || '')
-    const matchesSearch = investor?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const investorName = investor?.name || ''
+    const matchesSearch = investorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.description?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = typeFilter === "all" || transaction.type === typeFilter
@@ -387,9 +107,10 @@ export default function Transactions() {
     return matchesSearch && matchesType && matchesStatus
   })
 
-  const filteredWithdrawals = withdrawalRequests.filter(withdrawal => {
+  const filteredWithdrawals = localWithdrawals.filter(withdrawal => {
     const investor = getInvestorById(withdrawal.investorId)
-    const matchesSearch = investor?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const investorName = investor?.name || ''
+    const matchesSearch = investorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          withdrawal.reason?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "all" || withdrawal.status === statusFilter
     return matchesSearch && matchesStatus
@@ -409,13 +130,13 @@ export default function Transactions() {
   const handleAuthSubmit = async () => {
     if (authPassword === DUMMY_PASSWORD && pendingAction) {
       setIsProcessing(true)
-      
+
       try {
         // Simulate processing delay for realistic UX
         await new Promise(resolve => setTimeout(resolve, 1500))
-        
+
         if (pendingAction.type === 'approve') {
-          setWithdrawalRequests(prev => prev.map(withdrawal => 
+          setLocalWithdrawals(prev => prev.map(withdrawal =>
             withdrawal.id === pendingAction.id
               ? {
                   ...withdrawal,
@@ -427,13 +148,13 @@ export default function Transactions() {
                 }
               : withdrawal
           ))
-          
+
           toast({
             title: "Withdrawal Approved",
             description: "The withdrawal request has been successfully approved and processed.",
           })
         } else {
-          setWithdrawalRequests(prev => prev.map(withdrawal => 
+          setLocalWithdrawals(prev => prev.map(withdrawal =>
             withdrawal.id === pendingAction.id
               ? {
                   ...withdrawal,
@@ -446,14 +167,14 @@ export default function Transactions() {
                 }
               : withdrawal
           ))
-          
+
           toast({
             title: "Withdrawal Rejected",
             description: "The withdrawal request has been rejected with the specified reason.",
             variant: "destructive"
           })
         }
-        
+
         setIsAuthDialogOpen(false)
         setAuthPassword("")
         setPendingAction(null)
@@ -575,9 +296,9 @@ export default function Transactions() {
 
   const handleExportTransactions = () => {
     const headers = ['id', 'reference', 'type', 'amount', 'fee', 'status', 'investorName', 'description', 'createdAt']
-    const exportData = filteredTransactions.map(transaction => ({
+    const exportData = filteredTransactions.map((transaction: any) => ({
       ...transaction,
-      investorName: getInvestorById(transaction.investorId || '')?.name || 'Unknown',
+      investorName: (getInvestorById(transaction.investorId || '') as any)?.name || 'Unknown',
       createdAt: format(new Date(transaction.createdAt!), 'yyyy-MM-dd HH:mm:ss')
     }))
     exportToCSV(exportData, `transactions_${format(new Date(), 'yyyy-MM-dd')}.csv`, headers)
@@ -585,9 +306,9 @@ export default function Transactions() {
 
   const handleExportWithdrawals = () => {
     const headers = ['id', 'amount', 'reason', 'status', 'priority', 'investorName', 'requestedAt', 'reviewedAt']
-    const exportData = filteredWithdrawals.map(withdrawal => ({
+    const exportData = filteredWithdrawals.map((withdrawal: any) => ({
       ...withdrawal,
-      investorName: getInvestorById(withdrawal.investorId)?.name || 'Unknown',
+      investorName: (getInvestorById(withdrawal.investorId) as any)?.name || 'Unknown',
       requestedAt: format(new Date(withdrawal.requestedAt!), 'yyyy-MM-dd HH:mm:ss'),
       reviewedAt: withdrawal.reviewedAt ? format(new Date(withdrawal.reviewedAt), 'yyyy-MM-dd HH:mm:ss') : ''
     }))
@@ -623,18 +344,18 @@ export default function Transactions() {
 
   // Statistics calculations
   const totalInvestments = transactions
-    .filter(t => t.type === 'investment' && t.status === 'completed')
-    .reduce((sum, t) => sum + Number(t.amount), 0)
+    .filter((t: any) => t.type === 'investment' && t.status === 'completed')
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 
   const totalPayouts = transactions
-    .filter(t => t.type === 'payout' && t.status === 'completed')
-    .reduce((sum, t) => sum + Number(t.amount), 0)
+    .filter((t: any) => t.type === 'payout' && t.status === 'completed')
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 
-  const totalWithdrawals = withdrawalRequests
+  const totalWithdrawals = localWithdrawals
     .filter(w => w.status === 'completed' || w.status === 'approved')
     .reduce((sum, w) => sum + Number(w.amount), 0)
 
-  const pendingWithdrawals = withdrawalRequests.filter(w => w.status === 'pending').length
+  const pendingWithdrawals = localWithdrawals.filter(w => w.status === 'pending').length
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 modern-scrollbar">
@@ -882,8 +603,12 @@ export default function Transactions() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredTransactions.map((transaction) => {
+                      {filteredTransactions.map((transaction: any) => {
                         const investor = getInvestorById(transaction.investorId || '')
+                        const investorName = investor?.name || 'Unknown'
+                        const investorEmail = investor?.email || ''
+                        const investorPic = investor?.profilePicture || undefined
+                        const initials = investorName?.split(' ').map((n: string) => n[0]).join('') || 'U'
                         return (
                           <TableRow key={transaction.id} data-testid={`row-transaction-${transaction.id}`}>
                             <TableCell>
@@ -897,14 +622,14 @@ export default function Transactions() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
-                                  <AvatarImage src={investor?.profilePicture || undefined} alt={investor?.name || undefined} />
+                                  <AvatarImage src={investorPic} alt={investorName} />
                                   <AvatarFallback className="text-xs">
-                                    {investor?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                                    {initials}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <div className="font-medium text-sm">{investor?.name || 'Unknown'}</div>
-                                  <div className="text-xs text-muted-foreground">{investor?.email}</div>
+                                  <div className="font-medium text-sm">{investorName}</div>
+                                  <div className="text-xs text-muted-foreground">{investorEmail}</div>
                                 </div>
                               </div>
                             </TableCell>
@@ -999,8 +724,12 @@ export default function Transactions() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredWithdrawals.map((withdrawal) => {
+                      {filteredWithdrawals.map((withdrawal: any) => {
                         const investor = getInvestorById(withdrawal.investorId)
+                        const investorName = investor?.name || 'Unknown'
+                        const investorTier = investor?.investorTier || 'Unknown'
+                        const investorPic = investor?.profilePicture || undefined
+                        const initials = investorName?.split(' ').map((n: string) => n[0]).join('') || 'U'
                         return (
                           <TableRow key={withdrawal.id} data-testid={`row-withdrawal-${withdrawal.id}`}>
                             <TableCell>
@@ -1014,15 +743,15 @@ export default function Transactions() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
-                                  <AvatarImage src={investor?.profilePicture || undefined} alt={investor?.name || undefined} />
+                                  <AvatarImage src={investorPic} alt={investorName} />
                                   <AvatarFallback className="text-xs">
-                                    {investor?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                                    {initials}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <div className="font-medium text-sm">{investor?.name || 'Unknown'}</div>
+                                  <div className="font-medium text-sm">{investorName}</div>
                                   <div className="text-xs text-muted-foreground">
-                                    Tier: {investor?.investorTier || 'Unknown'}
+                                    Tier: {investorTier}
                                   </div>
                                 </div>
                               </div>
@@ -1115,7 +844,7 @@ export default function Transactions() {
                   <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg">
                     <span className="text-sm font-medium">Pending Transactions</span>
                     <span className="text-xl font-bold text-yellow-600">
-                      {transactions.filter(t => t.status === 'pending').length}
+                      {transactions.filter((t: any) => t.status === 'pending').length}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">

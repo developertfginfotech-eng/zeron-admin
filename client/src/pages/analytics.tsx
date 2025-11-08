@@ -50,7 +50,9 @@ export default function Analytics() {
     metrics = {},
     monthlyRevenue = [],
     userGrowth = [],
-    kycStats = {},
+    kycStats = [],
+    propertyPerformance = [],
+    investmentTrends = [],
   } = analyticsData || {}
 
   // Extract metrics with fallbacks
@@ -130,7 +132,7 @@ export default function Analytics() {
         <DashboardChart
           title="Monthly Revenue"
           description="Platform revenue over the last 7 months"
-          data={revenueData}
+          data={monthlyRevenue}
           type="bar"
           dataKey="value"
         />
@@ -152,18 +154,22 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {propertyPerformance.map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-primary"></div>
-                    <span className="font-medium">{item.name}</span>
-                    <Badge variant="outline">{item.count} properties</Badge>
+              {propertyPerformance && propertyPerformance.length > 0 ? (
+                propertyPerformance.map((item: any) => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full bg-primary"></div>
+                      <span className="font-medium">{item.name}</span>
+                      <Badge variant="outline">{item.count} properties</Badge>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold">{item.value}%</span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="font-bold">{item.value}%</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No property performance data available</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -175,7 +181,8 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {kycStats.map((item) => {
+              {kycStats && kycStats.length > 0 ? (
+                kycStats.map((item: any) => {
                 const getStatusColor = (status: string) => {
                   switch (status) {
                     case 'Approved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -198,7 +205,10 @@ export default function Analytics() {
                     </div>
                   </div>
                 )
-              })}
+                })
+              ) : (
+                <p className="text-sm text-muted-foreground">No KYC data available</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -212,7 +222,8 @@ export default function Analytics() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {investmentTrends.map((week) => (
+            {investmentTrends && investmentTrends.length > 0 ? (
+              investmentTrends.map((week: any) => (
               <div key={week.name} className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">{week.name}</span>
@@ -240,7 +251,10 @@ export default function Analytics() {
                   ></div>
                 </div>
               </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No investment trend data available</p>
+            )}
           </div>
         </CardContent>
       </Card>
