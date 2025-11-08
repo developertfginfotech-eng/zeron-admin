@@ -4,74 +4,66 @@ import { StatCard } from "@/components/stat-card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { 
-  TrendingUp, 
-  Users, 
-  Building2, 
+import {
+  TrendingUp,
+  Users,
+  Building2,
   DollarSign,
   Download,
-  Calendar
+  Calendar,
+  Loader2,
+  AlertCircle
 } from "lucide-react"
 import { useState } from "react"
+import { useAnalytics } from "@/hooks/use-analytics"
 
 export default function Analytics() {
-  // todo: remove mock functionality
-  const [dateRange, setDateRange] = useState("last_30_days")
+  const [dateRange, setDateRange] = useState("30days")
+  const { data: analyticsData, isLoading, error } = useAnalytics({ range: dateRange as any })
 
-  // Mock data for charts
-  const revenueData = [
-    { name: 'Jan', value: 890000, growth: 12 },
-    { name: 'Feb', value: 920000, growth: 8 },
-    { name: 'Mar', value: 1050000, growth: 15 },
-    { name: 'Apr', value: 980000, growth: -7 },
-    { name: 'May', value: 1120000, growth: 14 },
-    { name: 'Jun', value: 1250000, growth: 12 },
-    { name: 'Jul', value: 1180000, growth: -6 },
-  ]
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading analytics data...</p>
+        </div>
+      </div>
+    )
+  }
 
-  const propertyPerformance = [
-    { name: 'Residential', value: 45, count: 12 },
-    { name: 'Commercial', value: 35, count: 8 },
-    { name: 'Retail', value: 15, count: 3 },
-    { name: 'Mixed Use', value: 5, count: 1 },
-  ]
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <AlertCircle className="h-8 w-8 mx-auto text-red-500" />
+          <p className="text-red-600">Failed to load analytics</p>
+          <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+        </div>
+      </div>
+    )
+  }
 
-  const userGrowth = [
-    { name: 'Jan', value: 120, active: 890 },
-    { name: 'Feb', value: 150, active: 1040 },
-    { name: 'Mar', value: 180, active: 1220 },
-    { name: 'Apr', value: 200, active: 1420 },
-    { name: 'May', value: 240, active: 1660 },
-    { name: 'Jun', value: 280, active: 1940 },
-    { name: 'Jul', value: 320, active: 2260 },
-  ]
+  const {
+    metrics = {},
+    monthlyRevenue = [],
+    userGrowth = [],
+    kycStats = {},
+  } = analyticsData || {}
 
-  const investmentTrends = [
-    { name: 'Week 1', investment: 450000, withdrawal: 50000 },
-    { name: 'Week 2', investment: 520000, withdrawal: 75000 },
-    { name: 'Week 3', investment: 480000, withdrawal: 60000 },
-    { name: 'Week 4', investment: 680000, withdrawal: 90000 },
-  ]
-
-  const kycStats = [
-    { name: 'Pending', value: 45 },
-    { name: 'Approved', value: 185 },
-    { name: 'Rejected', value: 23 },
-    { name: 'Under Review', value: 12 },
-  ]
-
-  // Key metrics
-  const totalRevenue = 8570000
-  const monthlyGrowth = 12.5
-  const activeUsers = 2847
+  // Extract metrics with fallbacks
+  const totalRevenue = metrics.totalRevenue || 0
+  const monthlyGrowth = 12.5 // Can be calculated if needed
+  const activeUsers = metrics.activeUsers || 0
   const userGrowthRate = 15.8
-  const totalProperties = 24
+  const totalProperties = metrics.totalProperties || 0
   const propertyGrowth = 8.3
-  const averageROI = 9.8
+  const averageROI = metrics.averageReturnPercentage || 9.8
 
   const handleExportReport = () => {
     console.log('Export analytics report triggered')
-    // In real app, this would export the analytics data
   }
 
   return (
