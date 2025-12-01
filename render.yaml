@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: zeron-admin-dashboard
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_BASE_URL
+        value: https://zeron-backend-z5o1.onrender.com
