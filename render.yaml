@@ -5,6 +5,7 @@ services:
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm start
+    publishDirectory: .  # Dummy directory to satisfy Render, Node server handles routing
     envVars:
       - key: NODE_ENV
         value: production
