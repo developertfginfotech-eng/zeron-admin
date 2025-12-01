@@ -70,7 +70,10 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+  // In production, the server is bundled to dist/index.js
+  // So import.meta.dirname resolves to dist/
+  // and public files are at dist/public/
+  const distPath = path.resolve(import.meta.dirname, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
