@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Filter, Eye, TrendingUp, TrendingDown, Building, Wallet, ArrowUpRight, ArrowDownRight, Calendar, MapPin, Phone, Mail, User, FileText, CreditCard, Banknote, PieChart, Shield, CheckCircle, XCircle, Clock, AlertTriangle, Download, ExternalLink } from "lucide-react"
+import { Search, Filter, Eye, TrendingUp, TrendingDown, Building, Wallet, ArrowUpRight, ArrowDownRight, Calendar, MapPin, Phone, Mail, User, FileText, CreditCard, Banknote, PieChart, Shield, CheckCircle, XCircle, Clock, AlertTriangle, Download, ExternalLink, Bell } from "lucide-react"
 import { Investor, Investment, Transaction, PortfolioSummary, KycDocument } from "@shared/schema"
 
 // Safe helper functions for nullable values
@@ -2176,8 +2176,11 @@ export default function Investors() {
         // Transform API data to match InvestorWithPortfolio interface
         const transformedData: InvestorWithPortfolio[] = investorsArray.map((investor: any) => ({
           ...investor,
-          activeProperties: investor.properties?.length || 0,
-          investments: investor.properties?.map((prop: any, index: number) => ({
+          name: investor.name || `${investor.firstName} ${investor.lastName}`,
+          firstName: investor.firstName,
+          lastName: investor.lastName,
+          activeProperties: investor.investments?.length || investor.properties?.length || 0,
+          investments: investor.investments || investor.properties?.map((prop: any, index: number) => ({
             id: `inv${investor.id}_${index}`,
             investorId: investor.id,
             propertyId: prop.propertyId,
@@ -2196,9 +2199,9 @@ export default function Investors() {
           portfolio: investor.portfolio || {
             id: `port${investor.id}`,
             investorId: investor.id,
-            totalInvestment: investor.totalInvestments?.toString() || '0',
-            currentValue: investor.totalInvestments?.toString() || '0',
-            totalReturns: investor.totalReturns?.toString() || '0',
+            totalInvestment: investor.investmentSummary?.totalInvested?.toString() || investor.totalInvestments?.toString() || '0',
+            currentValue: investor.investmentSummary?.totalInvested?.toString() || investor.totalInvestments?.toString() || '0',
+            totalReturns: investor.investmentSummary?.totalReturns?.toString() || investor.totalReturns?.toString() || '0',
             totalDividends: '0',
             totalWithdrawals: '0',
             unrealizedGains: '0',
@@ -2207,6 +2210,7 @@ export default function Investors() {
             performanceScore: 75,
             lastUpdated: new Date(),
           },
+          profileData: investor.profileData || null,
           kycDocuments: investor.kycDocuments || (investor.kycStatus === 'approved' ? [
             {
               id: `doc_${investor.id}_1`,
@@ -2220,7 +2224,7 @@ export default function Investors() {
               reviewedAt: new Date(investor.joinedDate || new Date()),
               confidenceScore: 95,
               extractedData: {
-                fullName: investor.name,
+                fullName: investor.name || `${investor.firstName} ${investor.lastName}`,
                 documentNumber: `ID${Math.random().toString().substr(2, 9)}`,
                 issueDate: '2020-01-15',
                 expiryDate: '2030-01-15'
@@ -2337,6 +2341,21 @@ export default function Investors() {
   const handleViewProfile = (investor: InvestorWithPortfolio) => {
     setSelectedInvestor(investor)
     setIsProfileModalOpen(true)
+  }
+
+  const handleDownloadDocument = (document: KycDocument) => {
+    if (!document.documentUrl) {
+      console.error('No document URL available')
+      return
+    }
+
+    // Create a link element and trigger download
+    const link = document.createElement('a')
+    link.href = document.documentUrl
+    link.download = `${document.documentType}_${document.id}.pdf` || 'document.pdf'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleExport = () => {
@@ -2828,10 +2847,11 @@ export default function Investors() {
                 </div>
 
                 <Tabs defaultValue="financial" className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
+                  <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="financial">Financial Overview</TabsTrigger>
                     <TabsTrigger value="investments">Investments</TabsTrigger>
                     <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                    <TabsTrigger value="profile">Profile Details</TabsTrigger>
                     <TabsTrigger value="personal">Personal Info</TabsTrigger>
                     <TabsTrigger value="kyc-documents">KYC Documents</TabsTrigger>
                   </TabsList>
@@ -2995,6 +3015,162 @@ export default function Investors() {
                           </Card>
                         )
                       })}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="profile" className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Investment Profile */}
+                      {selectedInvestor.profileData?.investmentProfile && (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <TrendingUp className="h-5 w-5" />
+                              Investment Profile
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Investment Experience</span>
+                              <p className="font-medium">{selectedInvestor.profileData.investmentProfile.experience || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Risk Tolerance</span>
+                              <p className="font-medium">{selectedInvestor.profileData.investmentProfile.riskTolerance || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Investment Goals</span>
+                              <p className="font-medium text-sm">{selectedInvestor.profileData.investmentProfile.investmentGoals || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Preferred Property Types</span>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {selectedInvestor.profileData.investmentProfile.preferredTypes?.map((type) => (
+                                  <Badge key={type} variant="outline">{type}</Badge>
+                                )) || <span className="text-sm text-muted-foreground">N/A</span>}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Initial Investment Amount (SAR)</span>
+                              <p className="font-medium">{selectedInvestor.profileData.investmentProfile.investmentAmount || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Investment Timeline</span>
+                              <p className="font-medium">{selectedInvestor.profileData.investmentProfile.timeline || 'N/A'}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Banking Details */}
+                      {selectedInvestor.profileData?.bankingDetails && (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <CreditCard className="h-5 w-5" />
+                              Banking Details
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Bank Name</span>
+                              <p className="font-medium">{selectedInvestor.profileData.bankingDetails.bankName || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">IBAN</span>
+                              <p className="font-medium font-mono text-sm">{selectedInvestor.profileData.bankingDetails.iban || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Account Holder</span>
+                              <p className="font-medium">{selectedInvestor.profileData.bankingDetails.accountHolder || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">SWIFT Code</span>
+                              <p className="font-medium">{selectedInvestor.profileData.bankingDetails.swiftCode || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Account Type</span>
+                              <p className="font-medium">{selectedInvestor.profileData.bankingDetails.accountType || 'N/A'}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Communication Preferences */}
+                      {selectedInvestor.profileData?.communicationPreferences && (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <Bell className="h-5 w-5" />
+                              Communication Preferences
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Email Notifications</span>
+                              <p className="font-medium">{selectedInvestor.profileData.communicationPreferences.emailNotifications ? 'Enabled' : 'Disabled'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">SMS Alerts</span>
+                              <p className="font-medium">{selectedInvestor.profileData.communicationPreferences.smsAlerts ? 'Enabled' : 'Disabled'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Language Preference</span>
+                              <p className="font-medium">{selectedInvestor.profileData.communicationPreferences.languagePreference || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Timezone</span>
+                              <p className="font-medium">{selectedInvestor.profileData.communicationPreferences.timezone || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Marketing Emails</span>
+                              <p className="font-medium">{selectedInvestor.profileData.communicationPreferences.marketingEmails ? 'Enabled' : 'Disabled'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Monthly Reports</span>
+                              <p className="font-medium">{selectedInvestor.profileData.communicationPreferences.monthlyReports ? 'Enabled' : 'Disabled'}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Employment & Portfolio */}
+                      {selectedInvestor.profileData?.employmentPortfolio && (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <Building className="h-5 w-5" />
+                              Employment & Portfolio
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Employment Status</span>
+                              <p className="font-medium">{selectedInvestor.profileData.employmentPortfolio.employmentStatus || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Employer</span>
+                              <p className="font-medium">{selectedInvestor.profileData.employmentPortfolio.employer || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Job Title</span>
+                              <p className="font-medium">{selectedInvestor.profileData.employmentPortfolio.jobTitle || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Monthly Salary (SAR)</span>
+                              <p className="font-medium">{selectedInvestor.profileData.employmentPortfolio.monthlySalary || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Existing Investment Portfolio</span>
+                              <p className="font-medium">{selectedInvestor.profileData.employmentPortfolio.hasInvestmentPortfolio ? 'Yes' : 'No'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-muted-foreground">Portfolio Value (SAR)</span>
+                              <p className="font-medium">{selectedInvestor.profileData.employmentPortfolio.portfolioValue || 'N/A'}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
                     </div>
                   </TabsContent>
 
@@ -3272,7 +3448,7 @@ export default function Investors() {
                                           <Eye className="h-4 w-4 mr-2" />
                                           View Document
                                         </Button>
-                                        <Button variant="outline" size="sm" data-testid={`button-download-document-${document.id}`}>
+                                        <Button variant="outline" size="sm" data-testid={`button-download-document-${document.id}`} onClick={() => handleDownloadDocument(document)}>
                                           <Download className="h-4 w-4 mr-2" />
                                           Download
                                         </Button>

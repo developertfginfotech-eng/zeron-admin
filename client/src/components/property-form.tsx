@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Upload, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -61,14 +62,27 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
     rentalYieldRate: initialData?.investmentTerms?.rentalYieldRate?.toString() || "",
     appreciationRate: initialData?.investmentTerms?.appreciationRate?.toString() || "",
     lockingPeriodYears: initialData?.investmentTerms?.lockingPeriodYears?.toString() || "",
-    earlyWithdrawalPenaltyPercentage: initialData?.investmentTerms?.earlyWithdrawalPenaltyPercentage?.toString() || "",
+    bondMaturityYears: initialData?.investmentTerms?.bondMaturityYears?.toString() || "",
+    // Management Fees
+    managementFeesEnabled: initialData?.managementFees?.isActive || false,
+    managementFeePercentage: initialData?.managementFees?.percentage?.toString() || "0",
+    managementFeeDeductionType: initialData?.managementFees?.deductionType || "upfront",
   })
+
+  // Graduated penalties state (separate from formData for easier management)
+  const [graduatedPenalties, setGraduatedPenalties] = useState<Array<{year: number, penaltyPercentage: number}>>(
+    initialData?.investmentTerms?.graduatedPenalties || [
+      { year: 1, penaltyPercentage: 30 },
+      { year: 2, penaltyPercentage: 20 },
+      { year: 3, penaltyPercentage: 10 }
+    ]
+  )
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [filePreviews, setFilePreviews] = useState<string[]>([])
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: field === 'managementFeesEnabled' ? value === 'true' || value === true : value }))
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,12 +208,21 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
         rentalYieldRate: formData.rentalYieldRate ? parseFloat(formData.rentalYieldRate) : null,
         appreciationRate: formData.appreciationRate ? parseFloat(formData.appreciationRate) : null,
         lockingPeriodYears: formData.lockingPeriodYears ? parseFloat(formData.lockingPeriodYears) : null,
-        investmentDurationYears: formData.lockingPeriodYears ? parseFloat(formData.lockingPeriodYears) : null,
-        earlyWithdrawalPenaltyPercentage: formData.earlyWithdrawalPenaltyPercentage ? parseFloat(formData.earlyWithdrawalPenaltyPercentage) : null,
+        bondMaturityYears: formData.bondMaturityYears ? parseFloat(formData.bondMaturityYears) : null,
+        investmentDurationYears: formData.bondMaturityYears ? parseFloat(formData.bondMaturityYears) : null,
+        graduatedPenalties: graduatedPenalties
       },
 
-      // Files array
-      images: selectedFiles
+      // Management Fees Configuration
+      managementFees: {
+        isActive: formData.managementFeesEnabled,
+        percentage: parseFloat(formData.managementFeePercentage) || 0,
+        deductionType: formData.managementFeeDeductionType,
+        totalFeesCollected: 0
+      },
+
+      // Single image file (only first file used)
+      image: selectedFiles.length > 0 ? selectedFiles[0] : null
     }
 
     console.log('Submitting structured data:', submitData)
@@ -348,9 +371,66 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
               </div>
             </div>
 
+            {/* Management Fees Configuration */}
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <h3 className="text-lg font-semibold">Management Fees</h3>
+                  <p className="text-sm text-muted-foreground">Configure management fees for this property</p>
+                </div>
+                <Switch
+                  id="managementFeesEnabled"
+                  checked={formData.managementFeesEnabled}
+                  onCheckedChange={(checked) => handleInputChange('managementFeesEnabled', checked)}
+                />
+              </div>
+
+              {formData.managementFeesEnabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-4 border-l-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="managementFeePercentage">Fee Percentage (%)</Label>
+                    <Input
+                      id="managementFeePercentage"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.managementFeePercentage}
+                      onChange={(e) => handleInputChange('managementFeePercentage', e.target.value)}
+                      placeholder="1.80"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      E.g., 1.80% or 2.60% - This will be deducted from investments
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="managementFeeDeductionType">Deduction Type</Label>
+                    <Select
+                      value={formData.managementFeeDeductionType}
+                      onValueChange={(value) => handleInputChange('managementFeeDeductionType', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select deduction type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="upfront">Upfront (One-time at investment)</SelectItem>
+                        <SelectItem value="annual">Annual (Yearly)</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      When the management fee should be deducted
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Investment Terms - Property Specific */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Investment Terms (Optional - Leave empty to use global defaults)</h3>
+              <h3 className="text-lg font-semibold">Investment Terms</h3>
+              <p className="text-sm text-muted-foreground">Configure investment terms and returns for this property</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="rentalYieldRate">Annual Rental Yield (%)</Label>
@@ -359,11 +439,11 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
                     type="number"
                     min="0"
                     step="0.1"
-                    placeholder="e.g., 8 (default: 8%)"
+                    placeholder="e.g., 8"
                     value={formData.rentalYieldRate}
                     onChange={(e) => handleInputChange("rentalYieldRate", e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">Income earned annually during locking period</p>
+                  <p className="text-xs text-muted-foreground">Annual income earned during lock-in period</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="appreciationRate">Annual Appreciation Rate (%)</Label>
@@ -372,37 +452,107 @@ export function PropertyForm({ onSubmit, onCancel, initialData }: PropertyFormPr
                     type="number"
                     min="0"
                     step="0.1"
-                    placeholder="e.g., 3 (default: 3%)"
+                    placeholder="e.g., 3"
                     value={formData.appreciationRate}
                     onChange={(e) => handleInputChange("appreciationRate", e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">Property value growth after maturity</p>
+                  <p className="text-xs text-muted-foreground">Property value growth after lock-in period</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lockingPeriodYears">Locking Period (Years)</Label>
+                  <Label htmlFor="lockingPeriodYears">Lock-in Period (Years)</Label>
                   <Input
                     id="lockingPeriodYears"
                     type="number"
                     min="1"
                     step="1"
-                    placeholder="e.g., 5 (default: 5 years)"
+                    placeholder="e.g., 3"
                     value={formData.lockingPeriodYears}
                     onChange={(e) => handleInputChange("lockingPeriodYears", e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">Minimum hold period before withdrawal</p>
+                  <p className="text-xs text-muted-foreground">Lock-in period with graduated withdrawal penalties</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="earlyWithdrawalPenaltyPercentage">Early Withdrawal Penalty (%)</Label>
+                  <Label htmlFor="bondMaturityYears">Bond Maturity Period (Years)</Label>
                   <Input
-                    id="earlyWithdrawalPenaltyPercentage"
+                    id="bondMaturityYears"
                     type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="e.g., 5 (default: 5%)"
-                    value={formData.earlyWithdrawalPenaltyPercentage}
-                    onChange={(e) => handleInputChange("earlyWithdrawalPenaltyPercentage", e.target.value)}
+                    min="1"
+                    step="1"
+                    placeholder="e.g., 5"
+                    value={formData.bondMaturityYears}
+                    onChange={(e) => handleInputChange("bondMaturityYears", e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">Penalty if withdrawn before maturity</p>
+                  <p className="text-xs text-muted-foreground">Total bond duration (must be ≥ lock-in period)</p>
+                </div>
+              </div>
+
+              {/* Graduated Penalties Configuration */}
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Graduated Withdrawal Penalties</Label>
+                    <p className="text-xs text-muted-foreground">Penalty percentage for each year during lock-in period</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const maxYear = Math.max(0, ...graduatedPenalties.map(p => p.year));
+                      setGraduatedPenalties([...graduatedPenalties, { year: maxYear + 1, penaltyPercentage: 0 }]);
+                    }}
+                  >
+                    Add Year
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {graduatedPenalties.map((penalty, index) => (
+                    <div key={index} className="flex items-center gap-2 p-3 border rounded">
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Year {penalty.year}</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={penalty.year}
+                            onChange={(e) => {
+                              const updated = [...graduatedPenalties];
+                              updated[index].year = parseInt(e.target.value) || 1;
+                              setGraduatedPenalties(updated);
+                            }}
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Penalty %</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={penalty.penaltyPercentage}
+                            onChange={(e) => {
+                              const updated = [...graduatedPenalties];
+                              updated[index].penaltyPercentage = parseFloat(e.target.value) || 0;
+                              setGraduatedPenalties(updated);
+                            }}
+                            placeholder="30"
+                            className="h-8"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setGraduatedPenalties(graduatedPenalties.filter((_, i) => i !== index));
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

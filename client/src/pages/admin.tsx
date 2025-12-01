@@ -4,10 +4,26 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { 
-  Shield, 
-  UserCog, 
-  Settings, 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Shield,
+  UserCog,
+  Settings,
   Key,
   Clock,
   CheckCircle,
@@ -15,12 +31,20 @@ import {
   Search,
   Loader2,
   Users,
-  TrendingUp
+  TrendingUp,
+  FileText,
+  MapPin,
+  DollarSign,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import GroupManagement from "@/components/GroupManagement"
 
 // API Configuration
-const API_BASE_URL = 'http://13.50.13.193:5000'
+const API_BASE_URL = 'https://zeron-backend-z5o1.onrender.com'
 
 // Helper function for API calls
 const apiCall = async (endpoint: string, options?: RequestInit) => {
@@ -53,6 +77,7 @@ interface AdminUser {
   role: string
   status?: string
   createdAt: string
+  assignedRole?: RoleData
 }
 
 interface RegularUser {
@@ -65,17 +90,77 @@ interface RegularUser {
   emailVerified: boolean
 }
 
+interface Permission {
+  resource: string
+  actions: string[]
+}
+
+interface RoleData {
+  _id: string
+  name: string
+  displayName: string
+  description?: string
+  permissions: Permission[]
+  userCount?: number
+  isActive: boolean
+  isSystemRole?: boolean
+}
+
+interface GroupData {
+  _id: string
+  name: string
+  displayName: string
+  description?: string
+  permissions: Permission[]
+  memberCount: number
+  isActive: boolean
+  defaultRole?: {
+    _id: string
+    name: string
+    displayName: string
+  }
+}
+
+
 export default function AdminDashboard() {
   const { toast } = useToast()
-  
+
+  const [activeTab, setActiveTab] = useState("overview")
   const [selectedRole, setSelectedRole] = useState("all")
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [regularUsers, setRegularUsers] = useState<RegularUser[]>([])
   const [eligibleUsers, setEligibleUsers] = useState<RegularUser[]>([])
   const [dashboardStats, setDashboardStats] = useState<any>(null)
+  const [roles, setRoles] = useState<RoleData[]>([])
+  const [groups, setGroups] = useState<GroupData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showCreateAdminDialog, setShowCreateAdminDialog] = useState(false)
+  const [showAdminFunctionsDialog, setShowAdminFunctionsDialog] = useState(false)
+  const [selectedEligibleUser, setSelectedEligibleUser] = useState<string | null>(null)
+  const [selectedAdminRole, setSelectedAdminRole] = useState<string | null>(null)
+  const [isPromoting, setIsPromoting] = useState(false)
+  const [selectedGroupsForUser, setSelectedGroupsForUser] = useState<Set<string>>(new Set())
+  const [groupPermissionsForUser, setGroupPermissionsForUser] = useState<Record<string, any[]>>({})
+  const [adminDialogMode, setAdminDialogMode] = useState<'promote' | 'create'>('promote')
+  const [newAdminForm, setNewAdminForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    position: '',
+    password: ''
+  })
+  const [securitySettings, setSecuritySettings] = useState<any>(null)
+  const [showSecuritySettingsDialog, setShowSecuritySettingsDialog] = useState(false)
+  const [updatedSecuritySettings, setUpdatedSecuritySettings] = useState<any>(null)
+  const [savingSecuritySettings, setSavingSecuritySettings] = useState(false)
+
+  // SubAdmin states
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
+  const [selectedGroupForMember, setSelectedGroupForMember] = useState<string | null>(null)
 
   // Fetch all data on mount
   useEffect(() => {
@@ -87,18 +172,42 @@ export default function AdminDashboard() {
       setLoading(true)
       setError(null)
 
+      // Fetch roles
+      try {
+        const rolesResponse = await apiCall('/api/admin/roles')
+        console.log('Roles response:', rolesResponse)
+
+        if (rolesResponse.success && rolesResponse.data) {
+          setRoles(rolesResponse.data || [])
+        }
+      } catch (rolesErr) {
+        console.warn('Could not fetch roles:', rolesErr)
+      }
+
+      // Fetch groups
+      try {
+        const groupsResponse = await apiCall('/api/admin/groups')
+        console.log('Groups response:', groupsResponse)
+
+        if (groupsResponse.success && groupsResponse.data) {
+          setGroups(groupsResponse.data || [])
+        }
+      } catch (groupsErr) {
+        console.warn('Could not fetch groups:', groupsErr)
+      }
+
       // Fetch admin users
       const adminResponse = await apiCall('/api/admin/admin-users')
       console.log('Admin users response:', adminResponse)
-      
+
       if (adminResponse.success && adminResponse.data) {
         setAdminUsers(adminResponse.data.admins || [])
       }
 
-      // Fetch regular users  
+      // Fetch regular users
       const usersResponse = await apiCall('/api/admin/all-users')
       console.log('Regular users response:', usersResponse)
-      
+
       if (usersResponse.success && usersResponse.data) {
         setRegularUsers(usersResponse.data.users || [])
       }
@@ -107,7 +216,7 @@ export default function AdminDashboard() {
       try {
         const eligibleResponse = await apiCall('/api/admin/eligible-users')
         console.log('Eligible users response:', eligibleResponse)
-        
+
         if (eligibleResponse.success && eligibleResponse.data) {
           setEligibleUsers(eligibleResponse.data.users || [])
         }
@@ -119,10 +228,23 @@ export default function AdminDashboard() {
       // Fetch dashboard stats
       const dashboardResponse = await apiCall('/api/admin/dashboard')
       console.log('Dashboard response:', dashboardResponse)
-      
+
       if (dashboardResponse.success && dashboardResponse.data) {
         setDashboardStats(dashboardResponse.data.overview)
       }
+
+      // Fetch security settings
+      try {
+        const securityResponse = await apiCall('/api/admin/security-settings')
+        console.log('Security settings response:', securityResponse)
+
+        if (securityResponse.success && securityResponse.data) {
+          setSecuritySettings(securityResponse.data)
+        }
+      } catch (securityErr) {
+        console.warn('Could not fetch security settings:', securityErr)
+      }
+
 
     } catch (err: any) {
       console.error('Error fetching admin data:', err)
@@ -137,49 +259,227 @@ export default function AdminDashboard() {
     }
   }
 
-  const rolePermissions = {
-    super_admin: {
-      name: 'Super Administrator',
-      color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      permissions: ['All platform access', 'User management', 'System configuration', 'Financial operations', 'Security settings'],
-      count: adminUsers.filter(u => u.role === 'super_admin').length
-    },
-    kyc_officer: {
-      name: 'KYC Officer',
-      color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      permissions: ['Review KYC documents', 'Approve/reject verifications', 'User compliance', 'Document management'],
-      count: adminUsers.filter(u => u.role === 'kyc_officer').length
-    },
-    property_manager: {
-      name: 'Property Manager',
-      color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      permissions: ['Property listings', 'Investment tracking', 'Performance monitoring', 'Tenant management'],
-      count: adminUsers.filter(u => u.role === 'property_manager').length
-    },
-    financial_analyst: {
-      name: 'Financial Analyst',
-      color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      permissions: ['Financial reporting', 'Analytics access', 'Revenue tracking', 'Performance analysis'],
-      count: adminUsers.filter(u => u.role === 'financial_analyst').length
-    },
-    compliance_officer: {
-      name: 'Compliance Officer',
-      color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-      permissions: ['Regulatory compliance', 'Audit trails', 'Risk assessment', 'Legal documentation'],
-      count: adminUsers.filter(u => u.role === 'compliance_officer').length
+  // Toggle group expansion
+  const toggleGroupExpand = (groupId: string) => {
+    const newExpanded = new Set(expandedGroups)
+    if (newExpanded.has(groupId)) {
+      newExpanded.delete(groupId)
+    } else {
+      newExpanded.add(groupId)
+    }
+    setExpandedGroups(newExpanded)
+  }
+
+  // Handle creating new admin user
+  const handleCreateAdmin = async () => {
+    if (!newAdminForm.firstName || !newAdminForm.lastName || !newAdminForm.email || !newAdminForm.password || !selectedAdminRole) {
+      toast({
+        title: "Error",
+        description: "Please fill all required fields",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      setIsPromoting(true)
+      const groupIds = Array.from(selectedGroupsForUser)
+
+      const response = await apiCall('/api/admin/admin-users', {
+        method: 'POST',
+        body: JSON.stringify({
+          firstName: newAdminForm.firstName,
+          lastName: newAdminForm.lastName,
+          email: newAdminForm.email,
+          phone: newAdminForm.phone || undefined,
+          position: newAdminForm.position || undefined,
+          password: newAdminForm.password,
+          role: selectedAdminRole,
+          groupIds: groupIds.length > 0 ? groupIds : undefined
+        })
+      })
+
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: `Admin user ${newAdminForm.firstName} ${newAdminForm.lastName} created successfully${selectedGroupsForUser.size > 0 ? ` and added to ${selectedGroupsForUser.size} group(s)` : ''}`,
+        })
+        // Close dialog and reset state
+        setShowCreateAdminDialog(false)
+        setNewAdminForm({ firstName: '', lastName: '', email: '', phone: '', position: '', password: '' })
+        setSelectedAdminRole(null)
+        setSelectedGroupsForUser(new Set())
+        setGroupPermissionsForUser({})
+        // Refresh admin data
+        fetchAllData()
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to create admin user",
+        variant: "destructive"
+      })
+    } finally {
+      setIsPromoting(false)
     }
   }
 
-  const filteredAdminUsers = selectedRole === "all"
-    ? adminUsers.filter(user => 
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : adminUsers.filter(user => 
-        user.role === selectedRole &&
-        (user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
+  // Handle promoting a user to admin role and adding to groups
+  const handlePromoteUser = async () => {
+    if (!selectedEligibleUser || !selectedAdminRole) {
+      toast({
+        title: "Error",
+        description: "Please select both a user and a role",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      setIsPromoting(true)
+      const response = await apiCall('/api/admin/promote-user', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: selectedEligibleUser,
+          role: selectedAdminRole
+        })
+      })
+
+      if (response.success) {
+        // If groups are selected, add user to those groups
+        if (selectedGroupsForUser.size > 0) {
+          for (const groupId of selectedGroupsForUser) {
+            const memberPermissions = groupPermissionsForUser[groupId] || []
+            try {
+              await apiCall(`/api/admin/groups/${groupId}/add-member`, {
+                method: 'POST',
+                body: JSON.stringify({
+                  userId: selectedEligibleUser,
+                  memberPermissions
+                })
+              })
+            } catch (groupErr: any) {
+              console.warn(`Failed to add user to group ${groupId}:`, groupErr.message)
+            }
+          }
+        }
+
+        toast({
+          title: "Success",
+          description: `User promoted to ${roles.find(r => r.name === selectedAdminRole)?.displayName || 'admin'}${selectedGroupsForUser.size > 0 ? ` and added to ${selectedGroupsForUser.size} group(s)` : ''}`,
+        })
+        // Close dialog and reset state
+        setShowCreateAdminDialog(false)
+        setSelectedEligibleUser(null)
+        setSelectedAdminRole(null)
+        setSelectedGroupsForUser(new Set())
+        setGroupPermissionsForUser({})
+        // Refresh admin data
+        fetchAllData()
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to promote user",
+        variant: "destructive"
+      })
+    } finally {
+      setIsPromoting(false)
+    }
+  }
+
+// Save security settings
+  const handleSaveSecuritySettings = async () => {
+    try {
+      setSavingSecuritySettings(true)
+
+      // Get the actual values from the updated settings, ensuring we have valid numbers
+      const sessionTimeoutValue = updatedSecuritySettings?.sessionTimeout ?? securitySettings?.authentication?.sessionTimeout?.hours ?? 8
+      const passwordMinLengthValue = updatedSecuritySettings?.passwordMinLength ?? securitySettings?.authentication?.passwordPolicy?.minLength ?? 8
+      const loginAttemptsValue = updatedSecuritySettings?.loginAttemptsLimit ?? securitySettings?.authentication?.loginAttempts?.maxAttempts ?? 5
+      const apiRateLimitValue = updatedSecuritySettings?.apiRateLimit ?? securitySettings?.accessControl?.apiRateLimiting?.requestsPerMinute ?? 100
+
+      const updatedSettings = {
+        authentication: {
+          sessionTimeout: {
+            hours: sessionTimeoutValue
+          },
+          passwordPolicy: {
+            minLength: passwordMinLengthValue
+          },
+          loginAttempts: {
+            maxAttempts: loginAttemptsValue
+          }
+        },
+        accessControl: {
+          apiRateLimiting: {
+            requestsPerMinute: apiRateLimitValue
+          },
+          ipAllowlist: {
+            ips: updatedSecuritySettings?.ipAllowlist ? updatedSecuritySettings.ipAllowlist.split(',').map((ip: string) => ip.trim()).filter((ip: string) => ip.length > 0) : securitySettings?.accessControl?.ipAllowlist?.ips || []
+          }
+        }
+      }
+
+      const response = await apiCall('/api/admin/security-settings', {
+        method: 'PUT',
+        body: JSON.stringify(updatedSettings)
+      })
+
+      if (response.success) {
+        // Immediately update the display with the saved values
+        setSecuritySettings({
+          success: true,
+          data: {
+            authentication: {
+              twoFactorAuthentication: securitySettings?.data?.authentication?.twoFactorAuthentication || { enabled: true, status: 'Enabled' },
+              sessionTimeout: {
+                hours: sessionTimeoutValue,
+                status: `${sessionTimeoutValue} hours`
+              },
+              passwordPolicy: {
+                minLength: passwordMinLengthValue,
+                status: `${passwordMinLengthValue} characters`
+              },
+              loginAttempts: {
+                maxAttempts: loginAttemptsValue,
+                status: `${loginAttemptsValue} attempts`
+              }
+            },
+            accessControl: {
+              apiRateLimiting: {
+                requestsPerMinute: apiRateLimitValue,
+                status: 'Active'
+              },
+              ipAllowlist: {
+                ips: updatedSettings.accessControl.ipAllowlist.ips,
+                status: updatedSettings.accessControl.ipAllowlist.ips.length > 0 ? 'Configured' : 'Not configured'
+              },
+              auditLogging: securitySettings?.data?.accessControl?.auditLogging || { enabled: true, status: 'Enabled' },
+              dataEncryption: securitySettings?.data?.accessControl?.dataEncryption || { algorithm: 'AES-256', status: 'AES-256' }
+            }
+          }
+        })
+
+        toast({
+          title: "Success",
+          description: "Security settings updated successfully",
+        })
+        setShowSecuritySettingsDialog(false)
+        setUpdatedSecuritySettings(null)
+      } else {
+        throw new Error(response.message || 'Failed to save settings')
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save security settings",
+        variant: "destructive"
+      })
+    } finally {
+      setSavingSecuritySettings(false)
+    }
+  }
 
   // Loading state
   if (loading) {
@@ -220,226 +520,664 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold">Admin Management</h1>
           <p className="text-muted-foreground">Manage administrator access and permissions</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowCreateAdminDialog(true)}>
           <UserCog className="h-4 w-4 mr-2" />
           Add Administrator
         </Button>
       </div>
 
-      {/* Dashboard Stats */}
-      {dashboardStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardStats.totalProperties || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {dashboardStats.activeProperties || 0} active
-              </p>
-            </CardContent>
-          </Card>
+      {/* Tabs Navigation */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsTrigger value="overview" className="cursor-pointer">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="admins" className="cursor-pointer">
+            <UserCog className="h-4 w-4 mr-2" />
+            Admins
+          </TabsTrigger>
+          <TabsTrigger value="teams" className="cursor-pointer">
+            <Users className="h-4 w-4 mr-2" />
+            Teams
+          </TabsTrigger>
+        </TabsList>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardStats.totalUsers || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {dashboardStats.pendingKyc || 0} pending KYC
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Investments</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardStats.totalInvestments || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                SAR {(dashboardStats.totalInvestmentValue || 0).toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
-              <UserCog className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{adminUsers.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {adminUsers.filter(u => u.role === 'super_admin').length} super admins
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Role Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Object.entries(rolePermissions).map(([roleKey, role]) => (
-          <Card 
-            key={roleKey} 
-            className={`cursor-pointer transition-all hover:shadow-lg ${selectedRole === roleKey ? 'ring-2 ring-primary' : ''}`}
-            onClick={() => setSelectedRole(roleKey)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base">{role.name}</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between mb-3">
-                <Badge className={role.color}>
-                  {role.count} user{role.count !== 1 ? 's' : ''}
-                </Badge>
-              </div>
-              <div className="space-y-1">
-                {role.permissions.slice(0, 3).map((permission, index) => (
-                  <div key={index} className="text-xs text-muted-foreground flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3 text-green-600" />
-                    {permission}
-                  </div>
-                ))}
-                {role.permissions.length > 3 && (
-                  <div className="text-xs text-muted-foreground">
-                    +{role.permissions.length - 3} more permissions
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search admin users by name or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Admin Users List */}
-      <Card>
-        <CardHeader>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Dashboard Header */}
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>
-                Administrator Accounts
-                {selectedRole !== "all" && (
-                  <Badge className="ml-2">
-                    {rolePermissions[selectedRole as keyof typeof rolePermissions]?.name}
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                {selectedRole === "all" 
-                  ? `All administrative users (${filteredAdminUsers.length})`
-                  : `Users with ${rolePermissions[selectedRole as keyof typeof rolePermissions]?.name} role (${filteredAdminUsers.length})`
-                }
-              </CardDescription>
+              <h2 className="text-2xl font-bold">Dashboard Overview</h2>
+              <p className="text-muted-foreground mt-1">System statistics and quick access</p>
             </div>
-            {selectedRole !== "all" && (
-              <Button 
-                variant="outline" 
-                onClick={() => setSelectedRole("all")}
-                size="sm"
-              >
-                Show All Roles
-              </Button>
-            )}
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredAdminUsers.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No admin users found</p>
+
+          {/* Key Statistics */}
+          {dashboardStats && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-blue-900">Total Properties</CardTitle>
+                  <Shield className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">{dashboardStats.totalProperties || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {dashboardStats.activeProperties || 0} active
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-green-50 to-green-100">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-green-900">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">{dashboardStats.totalUsers || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {dashboardStats.pendingKyc || 0} pending KYC
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-purple-900">Total Investments</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-600">{dashboardStats.totalInvestments || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    SAR {(dashboardStats.totalInvestmentValue || 0).toLocaleString()}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-orange-50 to-orange-100">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-orange-900">Admin Users</CardTitle>
+                  <UserCog className="h-4 w-4 text-orange-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-600">{adminUsers.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {adminUsers.filter(u => u.role === 'super_admin').length} super admins
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-blue-200">
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>Navigate to manage key system components</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Button
+                  onClick={() => setActiveTab('admins')}
+                  className="bg-blue-600 hover:bg-blue-700 h-20 flex flex-col items-center justify-center gap-2"
+                >
+                  <UserCog className="h-5 w-5" />
+                  <span>Manage Admins</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('teams')}
+                  className="bg-green-600 hover:bg-green-700 h-20 flex flex-col items-center justify-center gap-2"
+                >
+                  <Users className="h-5 w-5" />
+                  <span>Manage Teams</span>
+                </Button>
+
+                <Button
+                  onClick={() => setShowCreateAdminDialog(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 h-20 flex flex-col items-center justify-center gap-2"
+                >
+                  <Plus className="h-5 w-5" />
+                  <span>Create Admin</span>
+                </Button>
               </div>
-            ) : (
-              filteredAdminUsers.map((user) => (
-                <div key={user._id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback>
-                        {user.firstName[0]}{user.lastName[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{user.firstName} {user.lastName}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
-                      <div className="text-xs text-muted-foreground">
-                        Joined {new Date(user.createdAt).toLocaleDateString()}
+            </CardContent>
+          </Card>
+
+          {/* System Health */}
+          <Card>
+            <CardHeader>
+              <CardTitle>System Summary</CardTitle>
+              <CardDescription>Current system statistics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center p-4">
+                  <p className="text-3xl font-bold text-blue-600">{groups.length}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Active Teams</p>
+                </div>
+                <div className="text-center p-4">
+                  <p className="text-3xl font-bold text-green-600">{adminUsers.length}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Total Staff</p>
+                </div>
+                <div className="text-center p-4">
+                  <p className="text-3xl font-bold text-purple-600">{roles.length}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Role Definitions</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="admins" className="space-y-6">
+          {/* Admin Management Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Admin Users Management</h2>
+              <p className="text-muted-foreground mt-1">Create, manage, and assign admin roles</p>
+            </div>
+            <Button
+              onClick={() => setShowCreateAdminDialog(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Admin
+            </Button>
+          </div>
+
+          {/* Role Hierarchy Quick Reference */}
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-600" />
+                Role Hierarchy & Team Management
+              </CardTitle>
+              <CardDescription>Create departments, assign admins, and manage teams</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Role Levels */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Super Admin */}
+                  <Card className="border-2 border-red-200 bg-red-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-red-600" />
+                        Super Admin
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm space-y-2">
+                      <p className="text-muted-foreground">Full system access</p>
+                      <div className="bg-white rounded p-2 space-y-1 text-xs">
+                        <p>✓ Create Admin roles</p>
+                        <p>✓ Assign departments</p>
+                        <p>✓ Manage all teams</p>
+                        <p>✓ View reports</p>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Admin */}
+                  <Card className="border-2 border-blue-200 bg-blue-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <UserCog className="h-4 w-4 text-blue-600" />
+                        Admin (Department Head)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm space-y-2">
+                      <p className="text-muted-foreground">Manage own department</p>
+                      <div className="bg-white rounded p-2 space-y-1 text-xs">
+                        <p>✓ Create teams/groups</p>
+                        <p>✓ Add Sub-Admins</p>
+                        <p>✓ Manage team access</p>
+                        <p>✓ Remove members</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Sub-Admin */}
+                  <Card className="border-2 border-green-200 bg-green-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Users className="h-4 w-4 text-green-600" />
+                        Sub-Admin (Team Member)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm space-y-2">
+                      <p className="text-muted-foreground">Team-specific work</p>
+                      <div className="bg-white rounded p-2 space-y-1 text-xs">
+                        <p>✓ View assigned tasks</p>
+                        <p>✓ Process transactions</p>
+                        <p>✓ Approve/reject requests</p>
+                        <p>✓ Department limited</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Example Teams */}
+                <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <span className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">Example Teams</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                      <p className="font-medium text-blue-900">Finance Office Team</p>
+                      <p className="text-xs text-muted-foreground mt-1">Admin: Finance Officer</p>
+                      <p className="text-xs text-muted-foreground">Work: Approve withdrawals, process payments</p>
+                    </div>
+                    <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                      <p className="font-medium text-purple-900">KYC Verification Team</p>
+                      <p className="text-xs text-muted-foreground mt-1">Admin: KYC Officer</p>
+                      <p className="text-xs text-muted-foreground">Work: Verify users, review documents</p>
+                    </div>
+                    <div className="p-3 bg-green-50 rounded border border-green-200">
+                      <p className="font-medium text-green-900">Property Management Team</p>
+                      <p className="text-xs text-muted-foreground mt-1">Admin: Property Manager</p>
+                      <p className="text-xs text-muted-foreground">Work: Approve listings, manage properties</p>
+                    </div>
+                    <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                      <p className="font-medium text-orange-900">Compliance Team</p>
+                      <p className="text-xs text-muted-foreground mt-1">Admin: Compliance Officer</p>
+                      <p className="text-xs text-muted-foreground">Work: Monitor activities, generate reports</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {user.status && (
-                      <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                        {user.status}
-                      </Badge>
-                    )}
-                    <Badge className={rolePermissions[user.role as keyof typeof rolePermissions]?.color}>
-                      {rolePermissions[user.role as keyof typeof rolePermissions]?.name || user.role}
-                    </Badge>
-                    <Button variant="ghost" size="sm">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Regular Users Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Regular Users Management</CardTitle>
-          <CardDescription>
-            Total: {regularUsers.length} users | Eligible for promotion: {eligibleUsers.length}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {regularUsers.slice(0, 5).map((user) => (
-              <div key={user._id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      {user.firstName[0]}{user.lastName[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-medium">{user.firstName} {user.lastName}</div>
-                    <div className="text-sm text-muted-foreground">{user.email}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={user.kycStatus === 'approved' ? 'default' : 'secondary'}>
-                    KYC: {user.kycStatus}
-                  </Badge>
-                  {user.emailVerified && (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  )}
                 </div>
               </div>
-            ))}
+            </CardContent>
+          </Card>
+
+          {/* Admin Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-red-50 to-red-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-red-900">Super Admins</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">1</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-blue-900">Admins</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{adminUsers.filter(u => u.role === 'admin' || u.assignedRole?.name === 'admin').length}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-50 to-green-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-green-900">Sub-Admins</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{adminUsers.filter(u => u.role === 'sub_admin' || u.assignedRole?.name === 'sub_admin').length}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-purple-900">Total Teams</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">{groups.length}</div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Current Admins List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Admin Users</CardTitle>
+              <CardDescription>All administrator and sub-administrator users in the system</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {adminUsers.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No admin users found. Create one using the button above.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {adminUsers.map((admin) => (
+                    <Card key={admin._id} className="border hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3 flex-1">
+                            <Avatar>
+                              <AvatarFallback>{admin.firstName?.[0]}{admin.lastName?.[0]}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold">{admin.firstName} {admin.lastName}</p>
+                              <p className="text-xs text-muted-foreground">{admin.email}</p>
+                            </div>
+                          </div>
+                          <Badge className={admin.role === 'super_admin' ? 'bg-red-600' : admin.role === 'admin' ? 'bg-blue-600' : 'bg-green-600'}>
+                            {admin.role === 'super_admin' ? 'Super Admin' : admin.role === 'admin' ? 'Admin' : 'Sub-Admin'}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <p>Created: {new Date(admin.createdAt).toLocaleDateString()}</p>
+                          <p>Status: <span className="font-medium">{admin.status || 'Active'}</span></p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Teams Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Department Teams & Members</CardTitle>
+              <CardDescription>
+                View and manage teams by department. Click to expand and see team members.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {groups.length === 0 ? (
+                <div className="text-center py-12 bg-muted/30 rounded-lg">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No teams created yet.</p>
+                  <p className="text-sm text-muted-foreground mt-2">Go to Groups tab to create your first team</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Group by department/category */}
+                  {groups.map((group) => (
+                    <div key={group._id} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                      {/* Group Header - Clickable */}
+                      <button
+                        onClick={() => toggleGroupExpand(group._id)}
+                        className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 flex-1 text-left">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-lg">{group.displayName}</h4>
+                            <p className="text-sm text-muted-foreground">{group.description || 'No description'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Badge variant="outline" className="bg-white">
+                            {group.memberCount || 0} members
+                          </Badge>
+                          {expandedGroups.has(group._id) ? (
+                            <ChevronUp className="h-5 w-5 text-gray-600" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-600" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expanded Content */}
+                      {expandedGroups.has(group._id) && (
+                        <div className="p-4 bg-white border-t space-y-4">
+                          {/* Permissions */}
+                          <div>
+                            <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              Team Permissions
+                            </h5>
+                            {group.permissions && group.permissions.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {group.permissions.map((perm: any, idx: number) => (
+                                  <div key={idx} className="text-xs bg-green-50 border border-green-200 rounded px-2 py-1 flex items-start gap-1">
+                                    <span className="text-green-600 mt-0.5">✓</span>
+                                    <span>{perm.resource}: {perm.actions.join(', ')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">No specific permissions set</p>
+                            )}
+                          </div>
+
+                          {/* Team Members */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-semibold text-sm flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                Team Members ({group.memberCount || 0})
+                              </h5>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => {
+                                  setSelectedGroupForMember(group._id)
+                                  setShowAddMemberDialog(true)
+                                }}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Member
+                              </Button>
+                            </div>
+
+                            {/* Members list placeholder - in real implementation, fetch actual members */}
+                            <div className="space-y-2 bg-gray-50 rounded p-3">
+                              <p className="text-xs text-muted-foreground italic">Team members will appear here</p>
+                              <div className="text-xs space-y-1">
+                                <div className="flex items-center justify-between p-2 bg-white rounded border">
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <div className="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center text-xs font-bold text-blue-800">AB</div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm">Admin User</p>
+                                      <p className="text-xs text-muted-foreground">admin@example.com</p>
+                                    </div>
+                                  </div>
+                                  <Badge variant="secondary" className="text-xs">Admin</Badge>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Default Role */}
+                          {group.defaultRole && (
+                            <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                              <p className="text-xs text-muted-foreground">Default Role</p>
+                              <p className="font-medium">{group.defaultRole.displayName}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Info Box */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium mb-2">💡 Quick Actions</p>
+                <ul className="text-xs space-y-1 text-muted-foreground">
+                  <li>• Click on a team to expand and see members</li>
+                  <li>• Use "Groups" tab to create new teams</li>
+                  <li>• Add Sub-Admins to teams to manage workflows</li>
+                  <li>• Each team can have different permissions</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="teams" className="space-y-6">
+          {/* Teams Management Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Teams & Groups Management</h2>
+              <p className="text-muted-foreground mt-1">Team Leads (Admins) manage their sub-admin team members</p>
+            </div>
+          </div>
+
+          {/* Teams Overview Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Total Teams
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">{groups.length}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-green-900 flex items-center gap-2">
+                  <UserCog className="h-4 w-4" />
+                  Team Leads (Admins)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">{adminUsers.filter(u => u.role === 'admin').length}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-purple-900 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Team Members (Sub-Admins)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-purple-600">{adminUsers.filter(u => u.role === 'sub_admin').length}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Department Teams & Team Leads */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Department Teams & Team Leads</CardTitle>
+              <CardDescription>View team leads (admins) and their team members (sub-admins)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {groups.length === 0 ? (
+                <div className="text-center py-12 bg-muted/30 rounded-lg">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No teams created yet.</p>
+                  <p className="text-sm text-muted-foreground mt-2">Use the Team Management section below to create teams</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {groups.map((group) => {
+                    // Find admin users who belong to this group (team leads)
+                    const teamLead = adminUsers.find(u => u.role === 'admin')
+                    const teamMembers = adminUsers.filter(u => u.role === 'sub_admin')
+
+                    return (
+                      <Card key={group._id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+                        <div className="p-4">
+                          {/* Team Header */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold">{group.displayName}</h3>
+                              <p className="text-sm text-muted-foreground">{group.description || 'No description'}</p>
+                            </div>
+                            <Badge className="bg-blue-600">{teamMembers.length} Members</Badge>
+                          </div>
+
+                          {/* Team Lead Section */}
+                          {teamLead && (
+                            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <p className="text-xs font-semibold text-green-900 mb-2">👨‍💼 Team Lead</p>
+                              <div className="flex items-center gap-3">
+                                <Avatar>
+                                  <AvatarFallback>
+                                    {teamLead.firstName?.[0]}{teamLead.lastName?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm">{teamLead.firstName} {teamLead.lastName}</p>
+                                  <p className="text-xs text-muted-foreground">{teamLead.email}</p>
+                                </div>
+                                <Badge className="bg-green-600 text-xs">Admin</Badge>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Team Members (Sub-Admins) Section */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-sm font-semibold flex items-center gap-2">
+                                👥 Team Members ({teamMembers.length})
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => {
+                                  setSelectedGroupForMember(group._id)
+                                  setShowAddMemberDialog(true)
+                                }}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Member
+                              </Button>
+                            </div>
+
+                            {teamMembers.length === 0 ? (
+                              <div className="text-center py-4 bg-gray-50 rounded border border-dashed border-gray-300">
+                                <p className="text-xs text-muted-foreground">No team members yet</p>
+                                <p className="text-xs text-muted-foreground mt-1">Click "Add Member" to add sub-admins to this team</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {teamMembers.map((member) => (
+                                  <div key={member._id} className="flex items-center justify-between p-2 bg-purple-50 rounded border border-purple-200">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <Avatar className="h-8 w-8">
+                                        <AvatarFallback className="text-xs">
+                                          {member.firstName?.[0]}{member.lastName?.[0]}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium">{member.firstName} {member.lastName}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge className="bg-purple-600 text-xs">Sub-Admin</Badge>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => alert('Remove member functionality coming soon')}
+                                      >
+                                        <Trash className="h-3 w-3 text-red-600" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Team Management Component */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Team Management</CardTitle>
+              <CardDescription>Create new teams and configure permissions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GroupManagement />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Administration Management Section */}
       <Card>
@@ -451,7 +1189,11 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-24 flex flex-col gap-2">
+            <Button
+              variant="outline"
+              className="h-24 flex flex-col gap-2 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer"
+              onClick={() => setShowCreateAdminDialog(true)}
+            >
               <UserCog className="h-6 w-6" />
               <div className="text-center">
                 <div className="font-semibold">Create Admin</div>
@@ -459,15 +1201,16 @@ export default function AdminDashboard() {
               </div>
             </Button>
 
-            <Button variant="outline" className="h-24 flex flex-col gap-2">
-              <Settings className="h-6 w-6" />
-              <div className="text-center">
-                <div className="font-semibold">Manage Roles</div>
-                <div className="text-xs text-muted-foreground">Update admin roles</div>
-              </div>
-            </Button>
-
-            <Button variant="outline" className="h-24 flex flex-col gap-2">
+            <Button
+              variant="outline"
+              className="h-24 flex flex-col gap-2 hover:bg-purple-50 dark:hover:bg-purple-950 hover:border-purple-300 dark:hover:border-purple-700 transition-all cursor-pointer"
+              onClick={() => {
+                toast({
+                  title: "Promote Users",
+                  description: "Feature coming soon. Use Teams tab to assign permissions.",
+                })
+              }}
+            >
               <Shield className="h-6 w-6" />
               <div className="text-center">
                 <div className="font-semibold">Promote Users</div>
@@ -482,7 +1225,9 @@ export default function AdminDashboard() {
                 <h4 className="font-semibold">Quick Actions</h4>
                 <p className="text-sm text-muted-foreground">Common administrative tasks</p>
               </div>
-              <Button>
+              <Button
+                onClick={() => setShowAdminFunctionsDialog(true)}
+              >
                 View All Admin Functions
               </Button>
             </div>
@@ -506,19 +1251,27 @@ export default function AdminDashboard() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span>Two-factor Authentication</span>
-                  <Badge variant="outline" className="text-green-600">Enabled</Badge>
+                  <Badge variant="outline" className="text-green-600">
+                    {securitySettings?.authentication?.twoFactorAuthentication?.status || 'Enabled'}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Session Timeout</span>
-                  <Badge variant="outline">8 hours</Badge>
+                  <Badge variant="outline">
+                    {securitySettings?.authentication?.sessionTimeout?.status || '8 hours'}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Password Policy</span>
-                  <Badge variant="outline" className="text-green-600">Strong</Badge>
+                  <Badge variant="outline" className="text-green-600">
+                    {securitySettings?.authentication?.passwordPolicy?.status || 'Strong'}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Login Attempts Limit</span>
-                  <Badge variant="outline">5 attempts</Badge>
+                  <Badge variant="outline">
+                    {securitySettings?.authentication?.loginAttempts?.status || '5 attempts'}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -530,31 +1283,696 @@ export default function AdminDashboard() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span>API Rate Limiting</span>
-                  <Badge variant="outline" className="text-green-600">Active</Badge>
+                  <Badge variant="outline" className="text-green-600">
+                    {securitySettings?.accessControl?.apiRateLimiting?.status || 'Active'}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>IP Allowlist</span>
-                  <Badge variant="outline">Configured</Badge>
+                  <Badge variant="outline">
+                    {securitySettings?.accessControl?.ipAllowlist?.status || 'Configured'}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Audit Logging</span>
-                  <Badge variant="outline" className="text-green-600">Enabled</Badge>
+                  <Badge variant="outline" className="text-green-600">
+                    {securitySettings?.accessControl?.auditLogging?.status || 'Enabled'}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Data Encryption</span>
-                  <Badge variant="outline" className="text-green-600">AES-256</Badge>
+                  <Badge variant="outline" className="text-green-600">
+                    {securitySettings?.accessControl?.dataEncryption?.status || 'AES-256'}
+                  </Badge>
                 </div>
               </div>
             </div>
           </div>
           <div className="mt-6 pt-4 border-t">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => setShowSecuritySettingsDialog(true)}>
               <Settings className="h-4 w-4 mr-2" />
               Configure Security Settings
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Administrator Dialog */}
+      <Dialog open={showCreateAdminDialog} onOpenChange={setShowCreateAdminDialog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Administrator</DialogTitle>
+            <DialogDescription>
+              {adminDialogMode === 'promote'
+                ? 'Promote a regular user to an administrator role'
+                : 'Create a new administrator with all details'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Mode Toggle */}
+          <div className="flex gap-2 mb-4 border-b">
+            <button
+              onClick={() => {
+                setAdminDialogMode('promote')
+                setSelectedEligibleUser(null)
+                setNewAdminForm({ firstName: '', lastName: '', email: '', phone: '', position: '', password: '' })
+              }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                adminDialogMode === 'promote'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Promote Existing User
+            </button>
+            <button
+              onClick={() => {
+                setAdminDialogMode('create')
+                setSelectedEligibleUser(null)
+                setNewAdminForm({ firstName: '', lastName: '', email: '', phone: '', position: '', password: '' })
+              }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                adminDialogMode === 'create'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Create New Admin
+            </button>
+          </div>
+
+          <div className="space-y-4 py-4">
+            {/* PROMOTE MODE */}
+            {adminDialogMode === 'promote' && (
+              <>
+                {/* Eligible Users Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Select User to Promote</label>
+                  <Select value={selectedEligibleUser || ""} onValueChange={setSelectedEligibleUser}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a user..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleUsers.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No eligible users available
+                    </div>
+                  ) : (
+                    eligibleUsers.map((user) => (
+                      <SelectItem key={user._id} value={user._id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-xs">
+                              {user.firstName?.[0]}
+                              {user.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium text-sm">
+                              {user.firstName} {user.lastName}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {user.email}
+                            </div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Selected User Info */}
+            {selectedEligibleUser && (
+              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <CardContent className="pt-6">
+                  <div className="text-sm">
+                    <div className="font-semibold mb-2">User Details:</div>
+                    {eligibleUsers
+                      .filter((u) => u._id === selectedEligibleUser)
+                      .map((user) => (
+                        <div key={user._id} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Name:</span>
+                            <span className="font-medium">
+                              {user.firstName} {user.lastName}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Email:</span>
+                            <span className="font-medium">{user.email}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">KYC Status:</span>
+                            <Badge variant="outline" className="text-xs">
+                              {user.kycStatus}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+              </>
+            )}
+
+            {/* CREATE MODE */}
+            {adminDialogMode === 'create' && (
+              <>
+                {/* Admin Details Form */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label htmlFor="firstName" className="text-sm font-medium">First Name</label>
+                    <input
+                      id="firstName"
+                      type="text"
+                      placeholder="John"
+                      value={newAdminForm.firstName}
+                      onChange={(e) => setNewAdminForm({ ...newAdminForm, firstName: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="lastName" className="text-sm font-medium">Last Name</label>
+                    <input
+                      id="lastName"
+                      type="text"
+                      placeholder="Doe"
+                      value={newAdminForm.lastName}
+                      onChange={(e) => setNewAdminForm({ ...newAdminForm, lastName: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium">Email Address</label>
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={newAdminForm.email}
+                    onChange={(e) => setNewAdminForm({ ...newAdminForm, email: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label htmlFor="phone" className="text-sm font-medium">Phone Number</label>
+                    <input
+                      id="phone"
+                      type="tel"
+                      placeholder="+966501234567"
+                      value={newAdminForm.phone}
+                      onChange={(e) => setNewAdminForm({ ...newAdminForm, phone: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="position" className="text-sm font-medium">Position/Title</label>
+                    <input
+                      id="position"
+                      type="text"
+                      placeholder="e.g. KYC Manager"
+                      value={newAdminForm.position}
+                      onChange={(e) => setNewAdminForm({ ...newAdminForm, position: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-sm font-medium">Password</label>
+                  <input
+                    id="password"
+                    type="password"
+                    placeholder="Enter password"
+                    value={newAdminForm.password}
+                    onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-muted-foreground">Min 8 characters, mix of letters, numbers, and symbols</p>
+                </div>
+              </>
+            )}
+
+            {/* Shared: Role Selection */}
+            <div className="space-y-2 pt-2 border-t">
+              <label className="text-sm font-medium">Select Admin Role</label>
+              <Select value={selectedAdminRole || ""} onValueChange={setSelectedAdminRole}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a role..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.filter(role => role.name !== 'super_admin').map((role) => (
+                    <SelectItem key={role._id} value={role.name}>
+                      <div>
+                        <div className="font-medium">{role.displayName}</div>
+                        {role.description && (
+                          <div className="text-xs text-muted-foreground">
+                            {role.description}
+                          </div>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Shared: Add to Groups */}
+            <div className="space-y-2 pt-2 border-t">
+              <label className="text-sm font-medium">Add to Groups (Optional)</label>
+              <p className="text-xs text-muted-foreground">Select which groups this user should be added to</p>
+              <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
+                {groups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No groups available</p>
+                ) : (
+                  groups.map((group) => (
+                    <div key={group._id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`group-${group._id}`}
+                        checked={selectedGroupsForUser.has(group._id)}
+                        onChange={(e) => {
+                          const newGroups = new Set(selectedGroupsForUser)
+                          if (e.target.checked) {
+                            newGroups.add(group._id)
+                          } else {
+                            newGroups.delete(group._id)
+                          }
+                          setSelectedGroupsForUser(newGroups)
+                        }}
+                        className="rounded"
+                      />
+                      <label htmlFor={`group-${group._id}`} className="text-sm cursor-pointer flex-1">
+                        <div className="font-medium">{group.displayName}</div>
+                        <div className="text-xs text-muted-foreground">{group.department || 'No department'}</div>
+                      </label>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateAdminDialog(false)
+                setSelectedEligibleUser(null)
+                setSelectedAdminRole(null)
+                setSelectedGroupsForUser(new Set())
+                setGroupPermissionsForUser({})
+                setNewAdminForm({ firstName: '', lastName: '', email: '', phone: '', position: '', password: '' })
+              }}
+              disabled={isPromoting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (adminDialogMode === 'promote') {
+                  handlePromoteUser()
+                } else {
+                  handleCreateAdmin()
+                }
+              }}
+              disabled={
+                isPromoting ||
+                !selectedAdminRole ||
+                (adminDialogMode === 'promote' ? !selectedEligibleUser :
+                  !newAdminForm.firstName || !newAdminForm.lastName || !newAdminForm.email || !newAdminForm.password)
+              }
+            >
+              {isPromoting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {adminDialogMode === 'promote' ? 'Promoting...' : 'Creating...'}
+                </>
+              ) : (
+                adminDialogMode === 'promote' ? 'Promote to Admin' : 'Create Admin User'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* All Admin Functions Dialog */}
+      <Dialog open={showAdminFunctionsDialog} onOpenChange={setShowAdminFunctionsDialog}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>All Admin Functions</DialogTitle>
+            <DialogDescription>
+              Comprehensive guide to all available administrative functions and tasks
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* User Management Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-lg">User Management</h3>
+              </div>
+              <div className="space-y-2 pl-7">
+                <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                  <h4 className="font-medium text-sm mb-1">Create Admin Users</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Create new administrator accounts from scratch or promote existing regular users to admin roles. Assign specific roles and group memberships.
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                  <h4 className="font-medium text-sm mb-1">Manage Admin Users</h4>
+                  <p className="text-xs text-muted-foreground">
+                    View all administrative users, update their details, change roles, deactivate or reactivate accounts as needed.
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                  <h4 className="font-medium text-sm mb-1">View Regular Users</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Monitor all regular platform users, check their KYC status, and manage their account settings.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Role Management Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-purple-600" />
+                <h3 className="font-semibold text-lg">Role Management</h3>
+              </div>
+              <div className="space-y-2 pl-7">
+                <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                  <h4 className="font-medium text-sm mb-1">Create Roles</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Define new administrative roles with custom permission sets. Specify which resources each role can access and what actions they can perform.
+                  </p>
+                </div>
+                <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                  <h4 className="font-medium text-sm mb-1">Update Roles</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Modify existing role definitions, update permissions, and change role descriptions and display names.
+                  </p>
+                </div>
+                <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                  <h4 className="font-medium text-sm mb-1">Assign Roles to Users</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Assign predefined roles to users. Users inherit all permissions associated with their assigned role.
+                  </p>
+                </div>
+                <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                  <h4 className="font-medium text-sm mb-1">View Role Permissions</h4>
+                  <p className="text-xs text-muted-foreground">
+                    See detailed permission matrices for each role. View which users are assigned to each role.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Group Management Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <UserCog className="h-5 w-5 text-green-600" />
+                <h3 className="font-semibold text-lg">Group Management</h3>
+              </div>
+              <div className="space-y-2 pl-7">
+                <div className="p-3 bg-green-50 rounded border border-green-200">
+                  <h4 className="font-medium text-sm mb-1">Create Groups</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Organize users into teams or departments. Create groups with specific purposes (e.g., KYC Team, Property Managers, Finance Team).
+                  </p>
+                </div>
+                <div className="p-3 bg-green-50 rounded border border-green-200">
+                  <h4 className="font-medium text-sm mb-1">Manage Group Members</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Add or remove members from groups. Assign individual permission levels to each group member independently.
+                  </p>
+                </div>
+                <div className="p-3 bg-green-50 rounded border border-green-200">
+                  <h4 className="font-medium text-sm mb-1">Member Permissions</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Grant granular permissions per member within a group. Assign different permission levels to different members of the same team.
+                  </p>
+                </div>
+                <div className="p-3 bg-green-50 rounded border border-green-200">
+                  <h4 className="font-medium text-sm mb-1">Group Permissions</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Set group-level permissions that apply to all members. Define what resources the group can access and what actions they can perform.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dashboard & Analytics Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-orange-600" />
+                <h3 className="font-semibold text-lg">Dashboard & Analytics</h3>
+              </div>
+              <div className="space-y-2 pl-7">
+                <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                  <h4 className="font-medium text-sm mb-1">View Dashboard</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Monitor overall platform statistics including user counts, transaction volumes, and system health metrics.
+                  </p>
+                </div>
+                <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                  <h4 className="font-medium text-sm mb-1">Transaction Reports</h4>
+                  <p className="text-xs text-muted-foreground">
+                    View detailed transaction history, investment records, and withdrawal requests. Filter by date range and status.
+                  </p>
+                </div>
+                <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                  <h4 className="font-medium text-sm mb-1">Earnings Reports</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Generate earnings reports for properties and investors. Export to CSV or JSON format for further analysis.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Security & Settings Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-red-600" />
+                <h3 className="font-semibold text-lg">Security & Settings</h3>
+              </div>
+              <div className="space-y-2 pl-7">
+                <div className="p-3 bg-red-50 rounded border border-red-200">
+                  <h4 className="font-medium text-sm mb-1">Two-Factor Authentication</h4>
+                  <p className="text-xs text-muted-foreground">
+                    All admin accounts require 2FA for enhanced security. Manage OTP settings and recovery codes.
+                  </p>
+                </div>
+                <div className="p-3 bg-red-50 rounded border border-red-200">
+                  <h4 className="font-medium text-sm mb-1">Audit Logging</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Track all administrative actions and changes. Maintain comprehensive audit trails for compliance.
+                  </p>
+                </div>
+                <div className="p-3 bg-red-50 rounded border border-red-200">
+                  <h4 className="font-medium text-sm mb-1">API Configuration</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Manage API keys, rate limiting, and IP whitelisting for secure API access and integration.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAdminFunctionsDialog(false)}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setShowAdminFunctionsDialog(false)
+                setActiveTab('overview')
+              }}
+            >
+              Go to Overview
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Security Settings Configuration Dialog */}
+      <Dialog open={showSecuritySettingsDialog} onOpenChange={setShowSecuritySettingsDialog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configure Security Settings</DialogTitle>
+            <DialogDescription>
+              Manage system-wide security policies and configurations
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Authentication Settings */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Key className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-lg">Authentication Settings</h3>
+              </div>
+              <div className="space-y-3 pl-7">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center justify-between">
+                    <span>Two-Factor Authentication</span>
+                    <Badge className="text-green-600 bg-green-50" variant="outline">
+                      {securitySettings?.authentication?.twoFactorAuthentication?.enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  </label>
+                  <p className="text-xs text-muted-foreground">All admin accounts require 2FA for security</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center justify-between">
+                    <span>Session Timeout</span>
+                    <Input
+                      type="number"
+                      value={updatedSecuritySettings?.sessionTimeout !== undefined ? updatedSecuritySettings.sessionTimeout : (securitySettings?.authentication?.sessionTimeout?.hours ?? 8)}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : 8
+                        setUpdatedSecuritySettings(prev => ({ ...prev, sessionTimeout: isNaN(val) ? 8 : val }))
+                      }}
+                      className="w-20 h-8"
+                      min="1"
+                      max="24"
+                    />
+                  </label>
+                  <p className="text-xs text-muted-foreground">Hours before session expires</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center justify-between">
+                    <span>Minimum Password Length</span>
+                    <Input
+                      type="number"
+                      value={updatedSecuritySettings?.passwordMinLength !== undefined ? updatedSecuritySettings.passwordMinLength : (securitySettings?.authentication?.passwordPolicy?.minLength ?? 8)}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : 8
+                        setUpdatedSecuritySettings(prev => ({ ...prev, passwordMinLength: isNaN(val) ? 8 : val }))
+                      }}
+                      className="w-20 h-8"
+                      min="6"
+                      max="20"
+                    />
+                  </label>
+                  <p className="text-xs text-muted-foreground">Minimum characters required for passwords</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center justify-between">
+                    <span>Login Attempts Limit</span>
+                    <Input
+                      type="number"
+                      value={updatedSecuritySettings?.loginAttemptsLimit !== undefined ? updatedSecuritySettings.loginAttemptsLimit : (securitySettings?.authentication?.loginAttempts?.maxAttempts ?? 5)}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : 5
+                        setUpdatedSecuritySettings(prev => ({ ...prev, loginAttemptsLimit: isNaN(val) ? 5 : val }))
+                      }}
+                      className="w-20 h-8"
+                      min="3"
+                      max="10"
+                    />
+                  </label>
+                  <p className="text-xs text-muted-foreground">Failed attempts before account lockout</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Access Control Settings */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-purple-600" />
+                <h3 className="font-semibold text-lg">Access Control</h3>
+              </div>
+              <div className="space-y-3 pl-7">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center justify-between">
+                    <span>API Rate Limiting</span>
+                    <Input
+                      type="number"
+                      value={updatedSecuritySettings?.apiRateLimit !== undefined ? updatedSecuritySettings.apiRateLimit : (securitySettings?.accessControl?.apiRateLimiting?.requestsPerMinute ?? 100)}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : 100
+                        setUpdatedSecuritySettings(prev => ({ ...prev, apiRateLimit: isNaN(val) ? 100 : val }))
+                      }}
+                      className="w-24 h-8"
+                      min="10"
+                      max="1000"
+                    />
+                  </label>
+                  <p className="text-xs text-muted-foreground">Requests per minute per API key</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    IP Allowlist
+                    <Badge className="ml-2" variant="outline">Configured</Badge>
+                  </label>
+                  <Input
+                    placeholder="Enter IP addresses (comma-separated)"
+                    className="text-xs"
+                    value={updatedSecuritySettings?.ipAllowlist ?? securitySettings?.accessControl?.ipAllowlist?.ips?.join(', ') ?? ''}
+                    onChange={(e) => setUpdatedSecuritySettings(prev => ({ ...prev, ipAllowlist: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">Leave empty to allow all IPs</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center justify-between">
+                    <span>Audit Logging</span>
+                    <Badge className="text-green-600 bg-green-50" variant="outline">
+                      {securitySettings?.accessControl?.auditLogging?.enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  </label>
+                  <p className="text-xs text-muted-foreground">Log all administrative actions for compliance</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center justify-between">
+                    <span>Data Encryption</span>
+                    <Badge variant="outline" className="text-green-600">
+                      {securitySettings?.accessControl?.dataEncryption?.algorithm || 'AES-256'}
+                    </Badge>
+                  </label>
+                  <p className="text-xs text-muted-foreground">All sensitive data is encrypted in transit and at rest</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSecuritySettingsDialog(false)
+                setUpdatedSecuritySettings(null)
+              }}
+              disabled={savingSecuritySettings}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveSecuritySettings}
+              disabled={savingSecuritySettings}
+            >
+              {savingSecuritySettings ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Settings'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

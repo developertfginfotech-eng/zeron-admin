@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,6 +33,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [, navigate] = useLocation();
   // const { toast } = useToast();
 
   const {
@@ -39,9 +41,21 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
+
+  // Pre-fill email from URL parameter if coming from OTP verification
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = params.get("email");
+      if (emailParam) {
+        setValue("email", decodeURIComponent(emailParam));
+      }
+    }
+  }, [setValue]);
 
   const handleLogin = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -197,7 +211,19 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   </span>
                 </div>
               </div>
-              
+
+              {/* Register Link */}
+              <p className="text-sm text-muted-foreground">
+                Super Admin?{" "}
+                <Button
+                  variant="link"
+                  className="p-0 h-auto font-semibold text-primary hover:underline"
+                  onClick={() => navigate("/admin/register")}
+                >
+                  Register New Admin
+                </Button>
+              </p>
+
               <p className="text-xs text-muted-foreground">
                 Contact your system administrator if you need access or have forgotten your credentials.
               </p>

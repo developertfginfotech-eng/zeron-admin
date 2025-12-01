@@ -1,5 +1,5 @@
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const API_BASE_URL = 'http://13.50.13.193:5000';
+const API_BASE_URL = 'https://zeron-backend-z5o1.onrender.com';
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
@@ -14,6 +14,9 @@ export const API_ENDPOINTS = {
   ADMIN: {
     // Admin user management
     GET_ADMIN_USERS: '/api/admin/admin-users',
+    GET_PENDING_ADMINS: '/api/admin/admin-users/pending/list',
+    CREATE_ADMIN_USER: '/api/admin/admin-users',
+    VERIFY_ADMIN: (id: string) => `/api/admin/admin-users/${id}/verify`,
     GET_ADMIN_USER_DETAILS: (id: string) => `/api/admin/admin-users/${id}`,
     UPDATE_ADMIN_USER_DETAILS: (id: string) => `/api/admin/admin-users/${id}/details`,
     DEACTIVATE_ADMIN_USER: (id: string) => `/api/admin/admin-users/${id}/deactivate`,

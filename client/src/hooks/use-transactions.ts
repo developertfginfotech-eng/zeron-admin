@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-const API_URL = 'http://13.50.13.193:5000/api'
+const API_URL = 'https://zeron-backend-z5o1.onrender.com/api'
 
 export function useTransactions(options?: {
   status?: string

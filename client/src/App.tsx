@@ -20,6 +20,8 @@ import Documents from "@/pages/documents";
 import Analytics from "@/pages/analytics";
 import Notifications from "@/pages/notifications";
 import Admin from "@/pages/admin";
+import AdminRegistration from "@/pages/admin-registration";
+import AdminVerifyOTP from "@/pages/admin-verify-otp";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -41,6 +43,8 @@ function AdminRouter() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/notifications" component={Notifications} />
       <Route path="/admin" component={Admin} />
+      <Route path="/admin/register" component={AdminRegistration} />
+      <Route path="/admin/verify-otp" component={AdminVerifyOTP} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
@@ -81,18 +85,42 @@ export default function App() {
     );
   }
 
-  // Show login page if not authenticated
-  if (!isAuthenticated) {
+  // Show login/register page if not authenticated (except for register and verify-otp pages)
+  const isRegisterPage = location === '/admin/register';
+  const isVerifyOTPPage = location === '/admin/verify-otp';
+  const isPublicPage = isRegisterPage || isVerifyOTPPage;
+
+  if (!isAuthenticated && !isPublicPage) {
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="light" storageKey="zaron-theme">
           <LanguageProvider defaultLanguage="en" storageKey="zaron-language">
             <TooltipProvider>
-              <LoginPage 
+              <LoginPage
                 onLoginSuccess={(data) => {
                   setIsAuthenticated(true);
                 }}
               />
+              <Toaster />
+            </TooltipProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  // Show registration/OTP verification pages for unauthenticated users
+  if (isPublicPage) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light" storageKey="zaron-theme">
+          <LanguageProvider defaultLanguage="en" storageKey="zaron-language">
+            <TooltipProvider>
+              <Switch>
+                <Route path="/admin/register" component={AdminRegistration} />
+                <Route path="/admin/verify-otp" component={AdminVerifyOTP} />
+                <Route component={NotFound} />
+              </Switch>
               <Toaster />
             </TooltipProvider>
           </LanguageProvider>

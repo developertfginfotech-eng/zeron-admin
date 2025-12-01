@@ -56,7 +56,7 @@ export default function EnhancedKYCDashboard() {
         return;
       }
 
-      const response = await fetch(`http://13.50.13.193:5000/api/kyc/admin/all?page=${page}&limit=20&status=${statusFilter}&search=${searchTerm}`, {
+      const response = await fetch(`https://zeron-backend-z5o1.onrender.com/api/kyc/admin/all?page=${page}&limit=20&status=${statusFilter}&search=${searchTerm}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -98,7 +98,7 @@ export default function EnhancedKYCDashboard() {
       setUpdating(true);
       const token = getAuthToken();
       
-      const response = await fetch(`http://13.50.13.193:5000/api/kyc/admin/${kycId}/status`, {
+      const response = await fetch(`https://zeron-backend-z5o1.onrender.com/api/kyc/admin/${kycId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

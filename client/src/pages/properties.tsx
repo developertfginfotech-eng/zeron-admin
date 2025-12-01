@@ -16,7 +16,7 @@ import { Search, Filter, Plus, ArrowLeft, Shield, AlertTriangle, Loader2, Clock,
 import { API_ENDPOINTS, apiCall, apiCallWithFiles } from "@/lib/api"
 
 // Configuration - CORRECTED BASE URL
-const API_BASE_URL = 'http://13.50.13.193:5000';
+const API_BASE_URL = 'https://zeron-backend-z5o1.onrender.com';
 
 // Backend property interface
 interface BackendProperty {
@@ -43,6 +43,25 @@ interface BackendProperty {
     projectedYield: number;
     minInvestment: number;
     currentValue: number;
+  };
+  investmentTerms?: {
+    targetReturn?: number;
+    rentalYieldRate?: number | null;
+    appreciationRate?: number | null;
+    lockingPeriodYears?: number | null;
+    bondMaturityYears?: number | null;
+    investmentDurationYears?: number | null;
+    earlyWithdrawalPenaltyPercentage?: number | null;
+    graduatedPenalties?: Array<{
+      year: number;
+      penaltyPercentage: number;
+    }>;
+  };
+  managementFees?: {
+    percentage: number;
+    isActive: boolean;
+    deductionType: 'upfront' | 'annual' | 'monthly';
+    totalFeesCollected: number;
   };
   propertyType: 'residential' | 'commercial' | 'retail';
   status: 'active' | 'upcoming' | 'fully_funded' | 'completed' | 'cancelled' | 'closed';
@@ -82,6 +101,8 @@ interface FrontendProperty {
   deactivatedAt: Date | null;
   deactivatedBy: string | null;
   createdAt: Date;
+  investmentTerms?: BackendProperty['investmentTerms'];
+  managementFees?: BackendProperty['managementFees'];
 }
 
 export default function Properties() {
@@ -98,6 +119,7 @@ export default function Properties() {
   const [showForm, setShowForm] = useState(false)
   const [editingProperty, setEditingProperty] = useState<FrontendProperty | null>(null)
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false)
+  const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false)
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
   const [authPassword, setAuthPassword] = useState("")
   const [deactivationReason, setDeactivationReason] = useState("")
@@ -173,6 +195,7 @@ export default function Properties() {
         case 'cancelled':
         case 'closed':
         case 'draft':
+        case 'inactive':
           return 'closed';
         default:
           console.warn(`Unknown backend status: ${backendStatus}, defaulting to 'closed'`);
@@ -184,10 +207,12 @@ export default function Properties() {
       id: backendProp._id,
       title: backendProp.title,
       description: backendProp.description || backendProp.titleAr || 'Property description not available',
-      location: `${backendProp.location.address || backendProp.location.district || ''}, ${backendProp.location.city}`,
-      price: backendProp.financials.totalValue.toString(),
+      location: backendProp.location
+        ? `${backendProp.location.address || backendProp.location.district || ''}, ${backendProp.location.city || 'Riyadh'}`
+        : 'Location not specified',
+      price: (backendProp.financials?.totalValue || 0).toString(),
       propertyType: backendProp.propertyType,
-      yield: backendProp.financials.projectedYield.toString(),
+      yield: (backendProp.financials?.projectedYield || 0).toString(),
       ownershipCap: Math.round(backendProp.fundingProgress || 0),
       status: mapStatus(backendProp.status), // Use the improved mapping function
       images: processImages(backendProp.images),
@@ -197,22 +222,25 @@ export default function Properties() {
       monthlyRevenue: backendProp.analytics?.monthlyRevenue?.toString() || '0',
       totalRevenue: backendProp.analytics?.totalRevenue?.toString() || '0',
       occupancyRate: backendProp.analytics?.occupancyRate?.toString() || '0',
-      performance: (backendProp.fundingProgress || 0) > 80 ? 'excellent' : 
+      performance: (backendProp.fundingProgress || 0) > 80 ? 'excellent' :
                   (backendProp.fundingProgress || 0) > 50 ? 'good' : 'stable',
       lastDividendDate: null,
       deactivationReason: null,
       deactivatedAt: null,
       deactivatedBy: null,
       createdAt: new Date(backendProp.createdAt),
+      // ADDED: Preserve investment terms and management fees for the property form
+      investmentTerms: backendProp.investmentTerms,
+      managementFees: backendProp.managementFees,
     };
   };
 
-  // FIXED: Map frontend property to backend format with correct status handling
+  // FIXED: Map frontend property to backend format with ALL fields including investment terms
   const mapFrontendToBackend = (frontendProp: FrontendProperty) => {
     const locationParts = frontendProp.location.split(',');
     const district = locationParts[0]?.trim() || '';
     const city = locationParts[1]?.trim() || 'riyadh';
-    
+
     // FIXED: Handle frontend to backend status mapping
     const mapStatusToBackend = (frontendStatus: string): string => {
       switch (frontendStatus) {
@@ -226,16 +254,31 @@ export default function Properties() {
           return 'active';
       }
     };
-    
+
     return {
+      _id: frontendProp.id,
       title: frontendProp.title,
       description: frontendProp.description,
       propertyType: frontendProp.propertyType,
       location: frontendProp.location,
-      price: frontendProp.price,
-      yield: frontendProp.yield,
       status: mapStatusToBackend(frontendProp.status),
-      existingImages: frontendProp.images
+      images: frontendProp.images,
+      financials: {
+        totalValue: parseFloat(frontendProp.price || '0'),
+        currentValue: parseFloat(frontendProp.price || '0'),
+        totalShares: 100,
+        availableShares: 100,
+        pricePerShare: parseFloat(frontendProp.price || '0') / 100,
+        projectedYield: parseFloat(frontendProp.yield || '0'),
+        monthlyRental: parseFloat(frontendProp.monthlyRevenue || '0'),
+        minInvestment: Math.max(1000, parseFloat(frontendProp.price || '0') * 0.01)
+      },
+      investmentTerms: {
+        rentalYieldRate: frontendProp.rentalYieldRate || null,
+        appreciationRate: frontendProp.appreciationRate || null,
+        lockingPeriodYears: frontendProp.lockingPeriodYears || null,
+        earlyWithdrawalPenaltyPercentage: frontendProp.earlyWithdrawalPenalty || null
+      }
     };
   };
 
@@ -310,6 +353,25 @@ export default function Properties() {
     }
   };
 
+  // Fetch property for editing - returns raw backend format with all fields
+  const fetchPropertyForEdit = async (id: string): Promise<BackendProperty | null> => {
+    try {
+      const response = await apiCall(API_ENDPOINTS.ADMIN.GET_PROPERTY(id));
+      if (response.success && response.data) {
+        return response.data; // Return raw backend data with all fields
+      }
+      return null;
+    } catch (error: any) {
+      console.error('Error fetching property for edit:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch property for editing.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
   // Search properties
   const searchProperties = async (searchParams: any) => {
     try {
@@ -340,24 +402,25 @@ export default function Properties() {
 
   const createProperty = async (formData: any) => {
   console.log('Creating property with structured data:', formData);
-  
+  console.log('Has image file:', formData.image ? 'YES' : 'NO');
+
   // Check if we have files to upload
-  const hasFiles = formData.images && formData.images.length > 0;
-  
+  const hasFiles = formData.image && formData.image instanceof File;
+
   if (hasFiles) {
     // Use FormData for file uploads
     const uploadData = new FormData();
-    
+
     // Add basic fields
     uploadData.append('title', formData.title || '');
     uploadData.append('description', formData.description || '');
     uploadData.append('propertyType', formData.propertyType || 'residential');
-    
+
     // Add OTP if provided
     if (formData.otp) {
       uploadData.append('otp', formData.otp);
     }
-    
+
     // Handle status mapping
     let backendStatus = 'active';
     if (formData.status) {
@@ -376,15 +439,26 @@ export default function Properties() {
       }
     }
     uploadData.append('status', backendStatus);
-    
+
     // Add complex objects as JSON strings (for FormData)
     uploadData.append('location', JSON.stringify(formData.location));
     uploadData.append('financials', JSON.stringify(formData.financials));
-    
-    // Add files
-    formData.images.forEach((image: File) => {
-      uploadData.append('images', image);
-    });
+
+    // Add investment terms if provided
+    if (formData.investmentTerms) {
+      uploadData.append('investmentTerms', JSON.stringify(formData.investmentTerms));
+    }
+
+    // Add management fees if provided
+    if (formData.managementFees) {
+      uploadData.append('managementFees', JSON.stringify(formData.managementFees));
+    }
+
+    // Add file - use 'image' field name to match backend multer.single('image')
+    if (formData.image instanceof File) {
+      uploadData.append('image', formData.image);
+      console.log('✓ Appended image file to FormData:', formData.image.name, 'Size:', formData.image.size, 'Type:', formData.image.type);
+    }
     
     console.log('FormData contents:');
     for (let [key, value] of uploadData.entries()) {
@@ -404,6 +478,8 @@ export default function Properties() {
       status: formData.status || 'active',
       location: formData.location,    // Direct object
       financials: formData.financials, // Direct object
+      investmentTerms: formData.investmentTerms, // Direct object
+      managementFees: formData.managementFees, // Direct object
       otp: formData.otp
     };
     
@@ -501,18 +577,24 @@ export default function Properties() {
       coordinates: { latitude: null, longitude: null }
     }));
     
-    // Include financial fields
-    const totalValue = parseFloat(formData.price || '0');
-    const totalShares = 100;
-    
+    // Include financial fields - use financials object if provided, otherwise fallback to price/yield
+    const totalValue = formData.financials?.totalValue || parseFloat(formData.price || '0');
+    const totalShares = formData.financials?.totalShares || 100;
+    const availableShares = formData.financials?.availableShares || totalShares;
+    const projectedYield = formData.financials?.projectedYield || parseFloat(formData.yield || '0');
+    const pricePerShare = formData.financials?.pricePerShare || (totalValue / totalShares);
+    const minInvestment = formData.financials?.minimumInvestment || Math.max(1000, totalValue * 0.01);
+    const monthlyRental = formData.financials?.monthlyRental || 0;
+
     uploadData.append('financials', JSON.stringify({
       totalValue: totalValue,
-      currentValue: totalValue,
+      currentValue: formData.financials?.currentValue || totalValue,
       totalShares: totalShares,
-      availableShares: totalShares,
-      pricePerShare: totalValue / totalShares,
-      minInvestment: Math.max(1000, totalValue * 0.01),
-      projectedYield: parseFloat(formData.yield || '0'),
+      availableShares: availableShares,
+      pricePerShare: pricePerShare,
+      minInvestment: minInvestment,
+      projectedYield: projectedYield,
+      monthlyRental: monthlyRental,
       managementFee: 2.5
     }));
 
@@ -523,18 +605,27 @@ export default function Properties() {
         rentalYieldRate: formData.investmentTerms.rentalYieldRate,
         appreciationRate: formData.investmentTerms.appreciationRate,
         lockingPeriodYears: formData.investmentTerms.lockingPeriodYears,
+        bondMaturityYears: formData.investmentTerms.bondMaturityYears,
         investmentDurationYears: formData.investmentTerms.investmentDurationYears,
         earlyWithdrawalPenaltyPercentage: formData.investmentTerms.earlyWithdrawalPenaltyPercentage,
+        graduatedPenalties: formData.investmentTerms.graduatedPenalties || []
       }));
     }
 
-    // Add new images if they exist
-    if (formData.images && formData.images.length > 0) {
-      formData.images.forEach((image: any) => {
-        if (image instanceof File) {
-          uploadData.append('images', image);
-        }
-      });
+    // Include management fees if provided
+    if (formData.managementFees) {
+      uploadData.append('managementFees', JSON.stringify({
+        isActive: formData.managementFees.isActive || false,
+        percentage: formData.managementFees.percentage || 0,
+        deductionType: formData.managementFees.deductionType || 'upfront',
+        totalFeesCollected: formData.managementFees.totalFeesCollected || 0
+      }));
+    }
+
+    // Add new image if it exists - use 'image' field name to match backend multer.single('image')
+    if (formData.image && formData.image instanceof File) {
+      uploadData.append('image', formData.image);
+      console.log('✓ Appended image file to FormData for update:', formData.image.name, 'Size:', formData.image.size, 'Type:', formData.image.type);
     }
     
     const response = await apiCallWithFiles(API_ENDPOINTS.ADMIN.UPDATE_PROPERTY(propertyId), uploadData, {
@@ -616,9 +707,9 @@ export default function Properties() {
   }
 
   const handleEditProperty = async (id: string) => {
-    const property = await fetchPropertyById(id);
+    const property = await fetchPropertyForEdit(id);
     if (property) {
-      setEditingProperty(property);
+      setEditingProperty(property as any); // Store backend format for editing
       setShowForm(true);
     }
   }
@@ -678,7 +769,7 @@ export default function Properties() {
 
   const handleConfirmDeactivation = async () => {
     const DUMMY_PASSWORD = "1234";
-    
+
     if (authPassword !== DUMMY_PASSWORD) {
       toast({
         title: "Invalid Password",
@@ -700,19 +791,29 @@ export default function Properties() {
     if (!selectedPropertyId) return
 
     try {
-      // This would be a separate deactivation API call
-      // For now, just update local state
-      setProperties(prev => prev.map(property => 
-        property.id === selectedPropertyId 
-          ? {
-              ...property,
-              status: 'closed' as const,
-              deactivationReason,
-              deactivatedAt: new Date(),
-              deactivatedBy: 'admin-current'
-            }
-          : property
-      ));
+      setLoading(true);
+
+      // Call backend API to deactivate property
+      const response = await apiCall(
+        `/api/properties/${selectedPropertyId}/deactivate`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            reason: deactivationReason,
+            comment: deactivationComment
+          })
+        }
+      );
+
+      if (!response.success) {
+        throw new Error(response.message || "Failed to deactivate property");
+      }
+
+      // Refresh properties list to get updated data
+      await fetchProperties();
 
       setIsDeactivateDialogOpen(false);
       setSelectedPropertyId(null);
@@ -731,6 +832,8 @@ export default function Properties() {
         description: error.message || "Failed to deactivate property.",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -742,6 +845,72 @@ export default function Properties() {
     setDeactivationComment("")
   }
 
+  const handleActivateProperty = (id: string) => {
+    setSelectedPropertyId(id)
+    setIsActivateDialogOpen(true)
+  }
+
+  const handleConfirmActivation = async () => {
+    const DUMMY_PASSWORD = "1234";
+
+    if (authPassword !== DUMMY_PASSWORD) {
+      toast({
+        title: "Invalid Password",
+        description: "Please enter the correct 4-digit authentication code.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!selectedPropertyId) return
+
+    try {
+      setLoading(true);
+
+      // Call backend API to activate property
+      const response = await apiCall(
+        `/api/properties/${selectedPropertyId}/activate`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      if (!response.success) {
+        throw new Error(response.message || "Failed to activate property");
+      }
+
+      // Refresh properties list to get updated data
+      await fetchProperties();
+
+      setIsActivateDialogOpen(false);
+      setSelectedPropertyId(null);
+      setAuthPassword("");
+
+      toast({
+        title: "Property Activated",
+        description: "Property has been successfully reactivated.",
+      });
+    } catch (error: any) {
+      console.error('Activation error:', error);
+      toast({
+        title: "Activation Failed",
+        description: error.message || "Failed to activate property.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleCancelActivation = () => {
+    setIsActivateDialogOpen(false)
+    setSelectedPropertyId(null)
+    setAuthPassword("")
+  }
+
   // Form submit with OTP handling
   const handleFormSubmit = async (data: any) => {
     try {
@@ -750,7 +919,12 @@ export default function Properties() {
       setLoading(true);
       
       if (editingProperty) {
-        const response = await updateProperty(editingProperty.id, data);
+        const propertyId = editingProperty._id || editingProperty.id;
+        console.log('Editing property ID:', propertyId);
+        if (!propertyId) {
+          throw new Error('Property ID is missing');
+        }
+        const response = await updateProperty(propertyId, data);
         console.log('Update response:', response);
         
         // If response indicates OTP required, show OTP page
@@ -816,7 +990,12 @@ export default function Properties() {
         setShowForm(false);
         setEditingProperty(null);
       } else if (otpOperation.type === 'update') {
-        await updateProperty(editingProperty!.id, dataWithOTP);
+        const propertyId = editingProperty!._id || editingProperty!.id;
+        console.log('OTP Verify - Property ID:', propertyId);
+        if (!propertyId) {
+          throw new Error('Property ID is missing in OTP verification');
+        }
+        await updateProperty(propertyId, dataWithOTP);
         toast({
           title: "Property Updated", 
           description: "Property has been successfully updated.",
@@ -940,7 +1119,7 @@ export default function Properties() {
           </h1>
         </div>
         <PropertyForm
-          initialData={editingProperty ? mapFrontendToBackend(editingProperty) : null}
+          initialData={editingProperty}
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
         />
@@ -1021,6 +1200,7 @@ export default function Properties() {
             onEdit={handleEditProperty}
             onDelete={handleDeleteProperty}
             onDeactivate={handleDeactivateProperty}
+            onActivate={handleActivateProperty}
           />
         ))}
       </div>
@@ -1111,13 +1291,69 @@ export default function Properties() {
             <Button variant="outline" onClick={handleCancelDeactivation}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleConfirmDeactivation}
               disabled={authPassword !== "1234" || !deactivationReason}
               variant="destructive"
               data-testid="button-confirm-deactivation"
             >
               Deactivate Property
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activation Dialog */}
+      <Dialog open={isActivateDialogOpen} onOpenChange={setIsActivateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-green-600" />
+              Activate Property
+            </DialogTitle>
+            <DialogDescription>
+              This will reactivate the property and mark it as active. This action requires authentication.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-800 dark:text-green-200">Notice</span>
+              </div>
+              <p className="text-sm text-green-700 dark:text-green-300">
+                This will make the property active again. Investor data and history will be preserved.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="auth-password-activate">4-Digit Authentication Code</Label>
+              <Input
+                id="auth-password-activate"
+                type="password"
+                placeholder="Enter 4-digit code"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                maxLength={4}
+                className="text-center text-lg tracking-widest"
+                data-testid="input-activation-password"
+              />
+              <p className="text-xs text-muted-foreground">
+                Demo code: 1234
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelActivation}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmActivation}
+              disabled={authPassword !== "1234"}
+              variant="default"
+              data-testid="button-confirm-activation"
+            >
+              Activate Property
             </Button>
           </DialogFooter>
         </DialogContent>

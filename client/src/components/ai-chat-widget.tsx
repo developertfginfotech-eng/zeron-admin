@@ -80,8 +80,7 @@ export function AiChatWidget() {
 
   const connectWebSocket = () => {
     try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//13.50.13.193:5000/ws`
+      const wsUrl = `wss://zeron-backend-z5o1.onrender.com/ws`
       
       wsRef.current = new WebSocket(wsUrl)
       

@@ -36,9 +36,10 @@ interface PropertyCardProps {
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
   onDeactivate?: (id: string) => void
+  onActivate?: (id: string) => void
 }
 
-export function PropertyCard({ property, onEdit, onDelete, onDeactivate }: PropertyCardProps) {
+export function PropertyCard({ property, onEdit, onDelete, onDeactivate, onActivate }: PropertyCardProps) {
   const statusColors = {
     live: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     upcoming: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -67,11 +68,19 @@ export function PropertyCard({ property, onEdit, onDelete, onDeactivate }: Prope
     onDeactivate?.(property.id)
   }
 
+  const handleActivate = () => {
+    console.log('Activate property triggered:', property.id)
+    onActivate?.(property.id)
+  }
+
   // Determine if property can be deleted (only non-live properties without investments)
   const canDelete = property.status !== 'live' && Number(property.totalInvestment || 0) === 0
-  
+
   // Determine if property should show deactivate option (live properties with investments)
   const shouldShowDeactivate = property.status === 'live' && Number(property.totalInvestment || 0) > 0
+
+  // Determine if property should show activate option (closed/deactivated properties)
+  const shouldShowActivate = property.status === 'closed'
 
   return (
     <Card className="enhanced-card animate-scale-up group overflow-hidden" data-testid={`card-property-${property.id}`}>
@@ -180,9 +189,9 @@ export function PropertyCard({ property, onEdit, onDelete, onDeactivate }: Prope
       </CardContent>
 
       <CardFooter className="flex gap-2 pt-3">
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={handleEdit}
           data-testid={`button-edit-${property.id}`}
           className="flex-1"
@@ -190,11 +199,11 @@ export function PropertyCard({ property, onEdit, onDelete, onDeactivate }: Prope
           <Edit className="h-4 w-4 mr-1" />
           Edit
         </Button>
-        
+
         {canDelete ? (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleDelete}
             data-testid={`button-delete-${property.id}`}
             className="flex-1 text-destructive hover:text-destructive"
@@ -203,9 +212,9 @@ export function PropertyCard({ property, onEdit, onDelete, onDeactivate }: Prope
             Delete
           </Button>
         ) : shouldShowDeactivate ? (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleDeactivate}
             data-testid={`button-deactivate-${property.id}`}
             className="flex-1 text-orange-600 hover:text-orange-700"
@@ -213,10 +222,21 @@ export function PropertyCard({ property, onEdit, onDelete, onDeactivate }: Prope
             <Shield className="h-4 w-4 mr-1" />
             Deactivate
           </Button>
+        ) : shouldShowActivate ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleActivate}
+            data-testid={`button-activate-${property.id}`}
+            className="flex-1 text-green-600 hover:text-green-700"
+          >
+            <Shield className="h-4 w-4 mr-1" />
+            Activate
+          </Button>
         ) : (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             disabled
             className="flex-1 opacity-50"
             title={property.status === 'live' ? 'Cannot delete live property with investments' : 'Property has active investments'}
