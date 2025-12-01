@@ -147,13 +147,22 @@ app.use((req, res, next) => {
 
   // Setup Vite dev server (only in development)
   if (app.get("env") === "development") {
+    log("Setting up Vite dev server...");
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    log("Setting up static file serving for production...");
+    try {
+      serveStatic(app);
+      log("Static file serving configured successfully");
+    } catch (err: any) {
+      log(`Error setting up static file serving: ${err.message}`);
+      throw err;
+    }
   }
 
 server.listen(port, host, () => {
   log(`🚀 Server running at http://${host}:${port}`);
+  log(`Environment: ${app.get("env")}`);
 });
 
 })();
