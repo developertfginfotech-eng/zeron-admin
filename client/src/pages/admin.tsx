@@ -82,6 +82,23 @@ const apiCall = async (endpoint: string, options?: RequestInit) => {
   return data
 }
 
+// Helper function to decode JWT and get current user info
+const getCurrentUser = (): any => {
+  try {
+    const token = localStorage.getItem('zaron_token') || localStorage.getItem('authToken')
+    if (!token) return null
+
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+
+    const decoded = JSON.parse(atob(parts[1]))
+    return decoded
+  } catch (err) {
+    console.error('Error decoding token:', err)
+    return null
+  }
+}
+
 interface AdminUser {
   _id: string
   firstName: string
@@ -176,9 +193,14 @@ export default function AdminDashboard() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
   const [selectedGroupForMember, setSelectedGroupForMember] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [addMemberRoleCategory, setAddMemberRoleCategory] = useState<'team_lead' | 'team_member' | null>(null)
+  const [selectedMemberUserId, setSelectedMemberUserId] = useState<string | null>(null)
 
   // Fetch all data on mount
   useEffect(() => {
+    const user = getCurrentUser()
+    setCurrentUser(user)
     fetchAllData()
   }, [])
 
@@ -468,23 +490,57 @@ export default function AdminDashboard() {
   }
 
   // Handle adding a member to a group
-  const handleAddMemberToGroup = async (userId: string, groupId: string) => {
+  const handleAddMemberToGroup = async (userId: string, groupId: string, roleCategory?: 'team_lead' | 'team_member') => {
     try {
+      // Check permission based on current user role
+      const user = currentUser
+      const group = groups.find(g => g._id === groupId)
+
+      // Only super admin can add team leads
+      if (roleCategory === 'team_lead' && user?.role !== 'super_admin') {
+        toast({
+          title: "Error",
+          description: "Only super admins can add team leads to groups",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Team members can only be added by super admin or team leads
+      if (roleCategory === 'team_member') {
+        const isTeamLead = user?.role === 'admin' && group?.members?.some((m: any) => {
+          const memberId = m.userId?._id?.toString() || m.userId?.toString() || m
+          return memberId === user?._id || memberId === user?.id
+        })
+
+        if (user?.role !== 'super_admin' && !isTeamLead) {
+          toast({
+            title: "Error",
+            description: "Only super admins or team leads can add team members",
+            variant: "destructive"
+          })
+          return
+        }
+      }
+
       const response = await apiCall(`/api/admin/groups/${groupId}/add-member`, {
         method: 'POST',
         body: JSON.stringify({
           userId: userId,
-          memberPermissions: []
+          memberPermissions: [],
+          roleCategory: roleCategory
         })
       })
 
       if (response.success) {
         toast({
           title: "Success",
-          description: "Member added to group successfully",
+          description: `Member added to group successfully as ${roleCategory === 'team_lead' ? 'Team Lead' : 'Team Member'}`,
         })
         setShowAddMemberDialog(false)
         setSelectedGroupForMember(null)
+        setSelectedMemberUserId(null)
+        setAddMemberRoleCategory(null)
 
         // Refetch groups to get updated members
         try {
@@ -1200,7 +1256,9 @@ export default function AdminDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">{adminUsers.filter(u => u.role === 'sub_admin').length}</div>
+                <div className="text-3xl font-bold text-purple-600">
+                  {groups.reduce((total, group) => total + (group.members?.length || 0), 0)}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -1890,51 +1948,110 @@ export default function AdminDashboard() {
 
       {/* Add Member to Team Dialog */}
       <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Add Team Member</DialogTitle>
+            <DialogTitle>Add Member to Group</DialogTitle>
             <DialogDescription>
-              Select a team member to add to this team
+              Select a user type and assign specific permissions for this group
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Get list of admins/sub-admins to add */}
+            {/* Role Category Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Select Member</label>
-              <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-2">
-                {adminUsers.filter(u => u.role !== 'super_admin').length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No members available to add</p>
-                ) : (
-                  adminUsers.filter(u => u.role !== 'super_admin').map((user) => (
-                    <div
-                      key={user._id}
-                      className="p-3 rounded border hover:bg-blue-50 cursor-pointer transition"
-                      onClick={() => {
-                        if (selectedGroupForMember) {
-                          handleAddMemberToGroup(user._id, selectedGroupForMember)
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
-                            {user.firstName?.[0]}{user.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
-                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                        </div>
-                        <Badge className={user.role === 'admin' ? 'bg-green-600' : 'bg-purple-600'} variant="default">
-                          {user.role === 'admin' ? 'Admin' : 'Sub-Admin'}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                )}
+              <label className="text-sm font-medium">Select Member Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setAddMemberRoleCategory('team_lead')
+                    setSelectedMemberUserId(null)
+                  }}
+                  disabled={currentUser?.role !== 'super_admin'}
+                  className={`p-3 rounded-lg border-2 transition ${
+                    addMemberRoleCategory === 'team_lead'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  } ${currentUser?.role !== 'super_admin' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div className="font-medium text-sm">Team Lead</div>
+                  <div className="text-xs text-muted-foreground">
+                    {currentUser?.role === 'super_admin' ? 'Manages a group' : 'Super Admin Only'}
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setAddMemberRoleCategory('team_member')
+                    setSelectedMemberUserId(null)
+                  }}
+                  disabled={currentUser?.role !== 'super_admin' && currentUser?.role !== 'admin'}
+                  className={`p-3 rounded-lg border-2 transition ${
+                    addMemberRoleCategory === 'team_member'
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  } ${
+                    currentUser?.role !== 'super_admin' && currentUser?.role !== 'admin'
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'cursor-pointer'
+                  }`}
+                >
+                  <div className="font-medium text-sm">Team Member</div>
+                  <div className="text-xs text-muted-foreground">
+                    {currentUser?.role === 'super_admin' || currentUser?.role === 'admin'
+                      ? 'Specific role'
+                      : 'Super Admin & Team Lead Only'}
+                  </div>
+                </button>
               </div>
             </div>
+
+            {/* User Selection */}
+            {addMemberRoleCategory && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {addMemberRoleCategory === 'team_lead' ? 'Select Team Lead' : 'Select Team Member'}
+                </label>
+                <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
+                  {adminUsers.filter(u => u.role !== 'super_admin').length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No users available</p>
+                  ) : (
+                    adminUsers.filter(u => u.role !== 'super_admin').map((user) => (
+                      <div
+                        key={user._id}
+                        className={`p-3 rounded border transition cursor-pointer ${
+                          selectedMemberUserId === user._id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setSelectedMemberUserId(user._id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded border border-gray-300 flex items-center justify-center">
+                            {selectedMemberUserId === user._id && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-sm"></div>
+                            )}
+                          </div>
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="text-xs">
+                              {user.firstName?.[0]}{user.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                          <Badge
+                            className={user.role === 'admin' ? 'bg-green-600' : 'bg-purple-600'}
+                            variant="default"
+                          >
+                            {user.role === 'admin' ? 'Admin' : 'Sub-Admin'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -1943,9 +2060,21 @@ export default function AdminDashboard() {
               onClick={() => {
                 setShowAddMemberDialog(false)
                 setSelectedGroupForMember(null)
+                setSelectedMemberUserId(null)
+                setAddMemberRoleCategory(null)
               }}
             >
               Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedMemberUserId && selectedGroupForMember && addMemberRoleCategory) {
+                  handleAddMemberToGroup(selectedMemberUserId, selectedGroupForMember, addMemberRoleCategory)
+                }
+              }}
+              disabled={!selectedMemberUserId || !selectedGroupForMember || !addMemberRoleCategory}
+            >
+              Add Member
             </Button>
           </DialogFooter>
         </DialogContent>
