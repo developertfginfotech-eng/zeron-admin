@@ -1294,7 +1294,7 @@ export default function AdminDashboard() {
                     console.log(`Group "${group.displayName}" members:`, groupMemberIds, 'Admin users:', adminUsers.map(u => ({ id: u._id, name: u.firstName })))
 
                     const teamLead = adminUsers.find(u => u.role === 'admin' && groupMemberIds.includes(u._id?.toString() || u._id))
-                    const teamMembers = adminUsers.filter(u => u.role !== 'super_admin' && groupMemberIds.includes(u._id?.toString() || u._id))
+                    const teamMembers = adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin' && groupMemberIds.includes(u._id?.toString() || u._id))
 
                     return (
                       <Card key={group._id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
