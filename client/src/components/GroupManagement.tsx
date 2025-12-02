@@ -149,13 +149,20 @@ export default function GroupManagement() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [groupsRes, usersRes] = await Promise.all([
+      const [groupsRes, adminUsersRes] = await Promise.all([
         apiCall("/api/admin/groups"),
-        apiCall("/api/admin/rbac/users"),
+        apiCall("/api/admin/admin-users"),
       ])
 
       if (groupsRes.success) setGroups(groupsRes.data || [])
-      if (usersRes.success) setUsers(usersRes.data || [])
+
+      // Only load admin users (not regular users)
+      if (adminUsersRes.success && adminUsersRes.data) {
+        const adminUsers = adminUsersRes.data.admins || []
+        // Filter to show only admin and sub-admin users
+        const filteredUsers = adminUsers.filter((u: any) => u.role !== 'super_admin')
+        setUsers(filteredUsers)
+      }
     } catch (err: any) {
       toast({
         title: "Error",
