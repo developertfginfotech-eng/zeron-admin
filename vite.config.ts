@@ -8,10 +8,9 @@ import fs from 'fs'
 // Determine the root directory based on file structure
 const cwd = process.cwd()
 const clientPath = path.join(cwd, 'client')
-const hasClient = fs.existsSync(path.join(clientPath, 'index.html'))
 
-// Always use client directory if it exists, otherwise use root
-const rootDir = hasClient ? clientPath : cwd
+// For dev: use client directory, for build: output to dist/public
+const rootDir = clientPath
 const outDir = path.join(cwd, 'dist', 'public')
 
 export default defineConfig(({ mode }) => {
@@ -33,10 +32,6 @@ export default defineConfig(({ mode }) => {
     ].filter(Boolean),
 
     css: {
-      postcss: {
-        from: undefined
-      },
-      // Optimize CSS
       devSourcemap: !isProduction,
     },
 
