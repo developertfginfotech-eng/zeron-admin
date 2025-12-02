@@ -205,7 +205,15 @@ export default function AdminDashboard() {
         console.log('Groups response:', groupsResponse)
 
         if (groupsResponse.success && groupsResponse.data) {
-          setGroups(groupsResponse.data || [])
+          // Log group structure to debug members
+          const groupsData = Array.isArray(groupsResponse.data) ? groupsResponse.data : groupsResponse.data.groups || []
+          console.log('Groups with members:', groupsData.map((g: any) => ({
+            id: g._id,
+            name: g.displayName,
+            memberCount: g.members?.length || 0,
+            members: g.members
+          })))
+          setGroups(groupsData || [])
         }
       } catch (groupsErr) {
         console.warn('Could not fetch groups:', groupsErr)
@@ -477,7 +485,16 @@ export default function AdminDashboard() {
         })
         setShowAddMemberDialog(false)
         setSelectedGroupForMember(null)
-        fetchAllData()
+
+        // Refetch groups to get updated members
+        try {
+          const groupsResponse = await apiCall('/api/admin/groups')
+          if (groupsResponse.success && groupsResponse.data) {
+            setGroups(groupsResponse.data || [])
+          }
+        } catch (err) {
+          console.error('Failed to refetch groups:', err)
+        }
       }
     } catch (err: any) {
       toast({
