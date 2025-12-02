@@ -459,6 +459,62 @@ export default function AdminDashboard() {
     }
   }
 
+  // Handle adding a member to a group
+  const handleAddMemberToGroup = async (userId: string, groupId: string) => {
+    try {
+      const response = await apiCall(`/api/admin/groups/${groupId}/add-member`, {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: userId,
+          memberPermissions: []
+        })
+      })
+
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Member added to group successfully",
+        })
+        setShowAddMemberDialog(false)
+        setSelectedGroupForMember(null)
+        fetchAllData()
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to add member to group",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Handle deleting a group (Super Admin only)
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await apiCall(`/api/admin/groups/${groupId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Group deleted successfully",
+        })
+        fetchAllData()
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete group",
+        variant: "destructive"
+      })
+    }
+  }
+
 // Save security settings
   const handleSaveSecuritySettings = async () => {
     try {
@@ -1161,7 +1217,18 @@ export default function AdminDashboard() {
                               <h3 className="text-lg font-semibold">{group.displayName}</h3>
                               <p className="text-sm text-muted-foreground">{group.description || 'No description'}</p>
                             </div>
-                            <Badge className="bg-blue-600">{teamMembers.length} Members</Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-blue-600">{teamMembers.length} Members</Badge>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="h-8 text-xs"
+                                onClick={() => handleDeleteGroup(group._id)}
+                              >
+                                <Trash className="h-3 w-3 mr-1" />
+                                Delete
+                              </Button>
+                            </div>
                           </div>
 
                           {/* Team Lead Section */}
@@ -1786,6 +1853,69 @@ export default function AdminDashboard() {
               ) : (
                 adminDialogMode === 'promote' ? 'Promote to Admin' : 'Create Admin User'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Member to Team Dialog */}
+      <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Team Member</DialogTitle>
+            <DialogDescription>
+              Select a team member to add to this team
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Get list of admins/sub-admins to add */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Member</label>
+              <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-2">
+                {adminUsers.filter(u => u.role !== 'super_admin').length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No members available to add</p>
+                ) : (
+                  adminUsers.filter(u => u.role !== 'super_admin').map((user) => (
+                    <div
+                      key={user._id}
+                      className="p-3 rounded border hover:bg-blue-50 cursor-pointer transition"
+                      onClick={() => {
+                        if (selectedGroupForMember) {
+                          handleAddMemberToGroup(user._id, selectedGroupForMember)
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs">
+                            {user.firstName?.[0]}{user.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        </div>
+                        <Badge className={user.role === 'admin' ? 'bg-green-600' : 'bg-purple-600'} variant="default">
+                          {user.role === 'admin' ? 'Admin' : 'Sub-Admin'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAddMemberDialog(false)
+                setSelectedGroupForMember(null)
+              }}
+            >
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>
