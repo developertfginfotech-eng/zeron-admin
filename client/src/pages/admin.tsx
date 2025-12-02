@@ -1223,9 +1223,20 @@ export default function AdminDashboard() {
                   {groups.map((group) => {
                     // Find admin users who belong to this group (team leads)
                     // Filter by checking if they're in the group's members array
-                    const groupMemberIds = group.members?.map((m: any) => m.userId || m) || []
-                    const teamLead = adminUsers.find(u => u.role === 'admin' && groupMemberIds.includes(u._id))
-                    const teamMembers = adminUsers.filter(u => u.role !== 'super_admin' && groupMemberIds.includes(u._id))
+                    // Note: members.userId is populated with user objects from backend
+                    const groupMemberIds = group.members?.map((m: any) => {
+                      // m.userId could be a populated user object with _id property
+                      if (m.userId && typeof m.userId === 'object' && m.userId._id) {
+                        return m.userId._id.toString()
+                      }
+                      // Fallback: m might be just an ID string or have _id property
+                      return typeof m === 'string' ? m : (m._id || m.userId)
+                    }) || []
+
+                    console.log(`Group "${group.displayName}" members:`, groupMemberIds, 'Admin users:', adminUsers.map(u => ({ id: u._id, name: u.firstName })))
+
+                    const teamLead = adminUsers.find(u => u.role === 'admin' && groupMemberIds.includes(u._id?.toString() || u._id))
+                    const teamMembers = adminUsers.filter(u => u.role !== 'super_admin' && groupMemberIds.includes(u._id?.toString() || u._id))
 
                     return (
                       <Card key={group._id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
