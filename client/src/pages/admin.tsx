@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
@@ -1622,30 +1623,107 @@ export default function AdminDashboard() {
             {selectedEligibleUser && (
               <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
                 <CardContent className="pt-6">
-                  <div className="text-sm">
-                    <div className="font-semibold mb-2">User Details:</div>
-                    {eligibleUsers
-                      .filter((u) => u._id === selectedEligibleUser)
-                      .map((user) => (
-                        <div key={user._id} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Name:</span>
-                            <span className="font-medium">
-                              {user.firstName} {user.lastName}
-                            </span>
+                  <div className="text-sm space-y-3">
+                    <div>
+                      <div className="font-semibold mb-2">User Details:</div>
+                      {eligibleUsers
+                        .filter((u) => u._id === selectedEligibleUser)
+                        .map((user) => (
+                          <div key={user._id} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Name:</span>
+                              <span className="font-medium">
+                                {user.firstName} {user.lastName}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Email:</span>
+                              <span className="font-medium">{user.email}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">KYC Status:</span>
+                              <Badge variant="outline" className="text-xs">
+                                {user.kycStatus}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Email:</span>
-                            <span className="font-medium">{user.email}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">KYC Status:</span>
-                            <Badge variant="outline" className="text-xs">
-                              {user.kycStatus}
-                            </Badge>
-                          </div>
+                        ))}
+                    </div>
+
+                    {/* Promotion Role Selection */}
+                    <div className="pt-3 border-t">
+                      <label className="text-sm font-medium mb-2 block">Promote To Role</label>
+                      <Select value={selectedAdminRole || ""} onValueChange={setSelectedAdminRole}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select role..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="kyc_officer">
+                            <div>
+                              <div className="font-medium">KYC Officer</div>
+                              <div className="text-xs text-muted-foreground">Sub-Admin Role</div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="property_manager">
+                            <div>
+                              <div className="font-medium">Property Manager</div>
+                              <div className="text-xs text-muted-foreground">Sub-Admin Role</div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="financial_analyst">
+                            <div>
+                              <div className="font-medium">Financial Analyst</div>
+                              <div className="text-xs text-muted-foreground">Sub-Admin Role</div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="compliance_officer">
+                            <div>
+                              <div className="font-medium">Compliance Officer</div>
+                              <div className="text-xs text-muted-foreground">Sub-Admin Role</div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="admin">
+                            <div>
+                              <div className="font-medium">Admin (Team Lead)</div>
+                              <div className="text-xs text-muted-foreground">Full Team Management</div>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Assign to Groups */}
+                    {selectedAdminRole === 'admin' && (
+                      <div className="pt-3 border-t">
+                        <label className="text-sm font-medium mb-2 block">Assign to Teams (Optional)</label>
+                        <div className="space-y-2 max-h-40 overflow-y-auto border rounded p-2 bg-white">
+                          {groups.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">No teams available</p>
+                          ) : (
+                            groups.map(group => (
+                              <div key={group._id} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`promote-group-${group._id}`}
+                                  checked={selectedGroupsForUser.has(group._id)}
+                                  onCheckedChange={e => {
+                                    const newGroups = new Set(selectedGroupsForUser)
+                                    if (e) {
+                                      newGroups.add(group._id)
+                                    } else {
+                                      newGroups.delete(group._id)
+                                    }
+                                    setSelectedGroupsForUser(newGroups)
+                                  }}
+                                />
+                                <label htmlFor={`promote-group-${group._id}`} className="text-sm cursor-pointer flex-1">
+                                  {group.displayName}
+                                </label>
+                              </div>
+                            ))
+                          )}
                         </div>
-                      ))}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
