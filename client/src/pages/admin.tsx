@@ -1146,44 +1146,6 @@ export default function AdminDashboard() {
                             )}
                           </div>
 
-                          {/* Team Members */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <h5 className="font-semibold text-sm flex items-center gap-2">
-                                <Users className="h-4 w-4" />
-                                Team Members ({group.memberCount || 0})
-                              </h5>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={() => {
-                                  setSelectedGroupForMember(group._id)
-                                  setShowAddMemberDialog(true)
-                                }}
-                              >
-                                <Plus className="h-3 w-3 mr-1" />
-                                Add Member
-                              </Button>
-                            </div>
-
-                            {/* Members list placeholder - in real implementation, fetch actual members */}
-                            <div className="space-y-2 bg-gray-50 rounded p-3">
-                              <p className="text-xs text-muted-foreground italic">Team members will appear here</p>
-                              <div className="text-xs space-y-1">
-                                <div className="flex items-center justify-between p-2 bg-white rounded border">
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <div className="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center text-xs font-bold text-blue-800">AB</div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-sm">Admin User</p>
-                                      <p className="text-xs text-muted-foreground">admin@example.com</p>
-                                    </div>
-                                  </div>
-                                  <Badge variant="secondary" className="text-xs">Admin</Badge>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
 
                           {/* Default Role */}
                           {group.defaultRole && (
