@@ -1344,18 +1344,34 @@ export default function AdminDashboard() {
                               <p className="text-sm font-semibold flex items-center gap-2">
                                 👥 Team Members ({teamMembers.length})
                               </p>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={() => {
-                                  setSelectedGroupForMember(group._id)
-                                  setShowAddMemberDialog(true)
-                                }}
-                              >
-                                <Plus className="h-3 w-3 mr-1" />
-                                Add Member
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                                  onClick={() => {
+                                    setSelectedGroupForMember(group._id)
+                                    setAddMemberRoleCategory('team_lead')
+                                    setSelectedMemberUserId(null)
+                                    setShowAddMemberDialog(true)
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add Team Lead
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-purple-600 hover:bg-purple-700"
+                                  onClick={() => {
+                                    setSelectedGroupForMember(group._id)
+                                    setAddMemberRoleCategory('team_member')
+                                    setSelectedMemberUserId(null)
+                                    setShowAddMemberDialog(true)
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add Team Member
+                                </Button>
+                              </div>
                             </div>
 
                             {teamMembers.length === 0 ? (
@@ -1950,108 +1966,74 @@ export default function AdminDashboard() {
       <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Add Member to Group</DialogTitle>
+            <DialogTitle>
+              {addMemberRoleCategory === 'team_lead' ? 'Add Team Lead' : 'Add Team Member'}
+            </DialogTitle>
             <DialogDescription>
-              Select a user type and assign specific permissions for this group
+              {addMemberRoleCategory === 'team_lead'
+                ? 'Select an admin user to add as a team lead for this group'
+                : 'Select a sub-admin user to add as a team member for this group'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Role Category Selection */}
+            {/* User Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Select Member Type</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    setAddMemberRoleCategory('team_lead')
-                    setSelectedMemberUserId(null)
-                  }}
-                  disabled={currentUser?.role !== 'super_admin'}
-                  className={`p-3 rounded-lg border-2 transition ${
+              <label className="text-sm font-medium">
+                {addMemberRoleCategory === 'team_lead' ? 'Available Admins (Team Leads)' : 'Available Sub-Admins (Team Members)'}
+              </label>
+              <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
+                {(() => {
+                  const filteredUsers =
                     addMemberRoleCategory === 'team_lead'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  } ${currentUser?.role !== 'super_admin' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <div className="font-medium text-sm">Team Lead</div>
-                  <div className="text-xs text-muted-foreground">
-                    {currentUser?.role === 'super_admin' ? 'Manages a group' : 'Super Admin Only'}
-                  </div>
-                </button>
-                <button
-                  onClick={() => {
-                    setAddMemberRoleCategory('team_member')
-                    setSelectedMemberUserId(null)
-                  }}
-                  disabled={currentUser?.role !== 'super_admin' && currentUser?.role !== 'admin'}
-                  className={`p-3 rounded-lg border-2 transition ${
-                    addMemberRoleCategory === 'team_member'
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  } ${
-                    currentUser?.role !== 'super_admin' && currentUser?.role !== 'admin'
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'cursor-pointer'
-                  }`}
-                >
-                  <div className="font-medium text-sm">Team Member</div>
-                  <div className="text-xs text-muted-foreground">
-                    {currentUser?.role === 'super_admin' || currentUser?.role === 'admin'
-                      ? 'Specific role'
-                      : 'Super Admin & Team Lead Only'}
-                  </div>
-                </button>
+                      ? adminUsers.filter(u => u.role === 'admin')
+                      : adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin')
+
+                  if (filteredUsers.length === 0) {
+                    return (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No {addMemberRoleCategory === 'team_lead' ? 'admin' : 'sub-admin'} users available
+                      </p>
+                    )
+                  }
+
+                  return filteredUsers.map((user) => (
+                    <div
+                      key={user._id}
+                      className={`p-3 rounded border transition cursor-pointer ${
+                        selectedMemberUserId === user._id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setSelectedMemberUserId(user._id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded border border-gray-300 flex items-center justify-center">
+                          {selectedMemberUserId === user._id && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-sm"></div>
+                          )}
+                        </div>
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs">
+                            {user.firstName?.[0]}{user.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        </div>
+                        <Badge
+                          className={user.role === 'admin' ? 'bg-green-600' : 'bg-purple-600'}
+                          variant="default"
+                        >
+                          {user.role === 'admin' ? 'Admin' : 'Sub-Admin'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                })()}
               </div>
             </div>
-
-            {/* User Selection */}
-            {addMemberRoleCategory && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {addMemberRoleCategory === 'team_lead' ? 'Select Team Lead' : 'Select Team Member'}
-                </label>
-                <div className="max-h-80 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
-                  {adminUsers.filter(u => u.role !== 'super_admin').length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No users available</p>
-                  ) : (
-                    adminUsers.filter(u => u.role !== 'super_admin').map((user) => (
-                      <div
-                        key={user._id}
-                        className={`p-3 rounded border transition cursor-pointer ${
-                          selectedMemberUserId === user._id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:bg-gray-50'
-                        }`}
-                        onClick={() => setSelectedMemberUserId(user._id)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded border border-gray-300 flex items-center justify-center">
-                            {selectedMemberUserId === user._id && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-sm"></div>
-                            )}
-                          </div>
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-xs">
-                              {user.firstName?.[0]}{user.lastName?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                          </div>
-                          <Badge
-                            className={user.role === 'admin' ? 'bg-green-600' : 'bg-purple-600'}
-                            variant="default"
-                          >
-                            {user.role === 'admin' ? 'Admin' : 'Sub-Admin'}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
           <DialogFooter>
@@ -2073,8 +2055,9 @@ export default function AdminDashboard() {
                 }
               }}
               disabled={!selectedMemberUserId || !selectedGroupForMember || !addMemberRoleCategory}
+              className={addMemberRoleCategory === 'team_lead' ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'}
             >
-              Add Member
+              {addMemberRoleCategory === 'team_lead' ? 'Add Team Lead' : 'Add Team Member'}
             </Button>
           </DialogFooter>
         </DialogContent>
