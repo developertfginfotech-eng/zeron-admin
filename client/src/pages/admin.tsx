@@ -46,10 +46,23 @@ import GroupManagement from "@/components/GroupManagement"
 // API Configuration
 const API_BASE_URL = 'https://zeron-backend-z5o1.onrender.com'
 
+// Valid role names that backend accepts for admin creation
+const VALID_ROLE_NAMES = [
+  'admin',
+  'super_admin',
+  'kyc_officer',
+  'property_manager',
+  'financial_analyst',
+  'compliance_officer'
+]
+
+// Helper to check if role name is valid
+const isValidRoleName = (roleName: string) => VALID_ROLE_NAMES.includes(roleName)
+
 // Helper function for API calls
 const apiCall = async (endpoint: string, options?: RequestInit) => {
   const token = localStorage.getItem('zaron_token') || localStorage.getItem('authToken')
-  
+
   const defaultOptions: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
@@ -281,6 +294,16 @@ export default function AdminDashboard() {
       return
     }
 
+    // Validate selected role
+    if (!isValidRoleName(selectedAdminRole)) {
+      toast({
+        title: "Invalid Role",
+        description: `Selected role is not valid. Role must be one of: ${VALID_ROLE_NAMES.join(', ')}`,
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       setIsPromoting(true)
       const groupIds = Array.from(selectedGroupsForUser)
@@ -330,6 +353,16 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "Please select both a user and a role",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Validate selected role
+    if (!isValidRoleName(selectedAdminRole)) {
+      toast({
+        title: "Invalid Role",
+        description: `Selected role is not valid. Role must be one of: ${VALID_ROLE_NAMES.join(', ')}`,
         variant: "destructive"
       })
       return
@@ -520,10 +553,21 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold">Admin Management</h1>
           <p className="text-muted-foreground">Manage administrator access and permissions</p>
         </div>
-        <Button onClick={() => setShowCreateAdminDialog(true)}>
-          <UserCog className="h-4 w-4 mr-2" />
-          Add Administrator
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => setShowCreateAdminDialog(true)}>
+            <UserCog className="h-4 w-4 mr-2" />
+            Add Administrator
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              localStorage.clear();
+              window.location.href = '/login';
+            }}
+          >
+            Logout
+          </Button>
+        </div>
       </div>
 
       {/* Tabs Navigation */}
@@ -1523,24 +1567,42 @@ export default function AdminDashboard() {
             <div className="space-y-2 pt-2 border-t">
               <label className="text-sm font-medium">Select Admin Role</label>
               <Select value={selectedAdminRole || ""} onValueChange={setSelectedAdminRole}>
-                <SelectTrigger>
+                <SelectTrigger className={selectedAdminRole && !isValidRoleName(selectedAdminRole) ? "border-red-500" : ""}>
                   <SelectValue placeholder="Choose a role..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.filter(role => role.name !== 'super_admin').map((role) => (
-                    <SelectItem key={role._id} value={role.name}>
-                      <div>
-                        <div className="font-medium">{role.displayName}</div>
-                        {role.description && (
-                          <div className="text-xs text-muted-foreground">
-                            {role.description}
+                  {roles.length > 0 ? (
+                    roles.filter(role => role.name !== 'super_admin').map((role) => {
+                      const isValid = isValidRoleName(role.name)
+                      return (
+                        <SelectItem key={role._id} value={role.name}>
+                          <div>
+                            <div className="font-medium">{role.displayName}</div>
+                            {!isValid && (
+                              <div className="text-xs text-red-600">⚠️ Invalid role name</div>
+                            )}
+                            {role.description && isValid && (
+                              <div className="text-xs text-muted-foreground">
+                                {role.description}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </SelectItem>
+                      )
+                    })
+                  ) : (
+                    <SelectItem value="" disabled>
+                      Loading roles...
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
+              {selectedAdminRole && !isValidRoleName(selectedAdminRole) && (
+                <p className="text-xs text-red-600">⚠️ Selected role name is not valid. Role must be one of: {VALID_ROLE_NAMES.join(', ')}</p>
+              )}
+              {roles.length === 0 && (
+                <p className="text-xs text-amber-600">No roles available. Create roles first.</p>
+              )}
             </div>
 
             {/* Shared: Add to Groups */}
