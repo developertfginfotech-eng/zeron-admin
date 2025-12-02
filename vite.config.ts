@@ -1,89 +1,174 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { splitVendorChunkPlugin } from 'vite'
+import { visualizer } from 'rollup-plugin-visualizer'
 import path from 'path'
 import fs from 'fs'
 
 // Determine the root directory based on file structure
-const determineRoot = () => {
-  const cwd = process.cwd()
-  // Check if we're in the project root with a client subdirectory
-  if (fs.existsSync(path.join(cwd, 'client', 'index.html'))) {
-    return path.join(cwd, 'client')
-  }
-  // Check if index.html is in current directory (Render or CI environment)
-  if (fs.existsSync(path.join(cwd, 'index.html'))) {
-    return cwd
-  }
-  // Default to client directory
-  return path.join(cwd, 'client')
-}
+const cwd = process.cwd()
+const clientPath = path.join(cwd, 'client')
+const hasClient = fs.existsSync(path.join(clientPath, 'index.html'))
 
-const determineOutDir = () => {
-  const cwd = process.cwd()
-  if (fs.existsSync(path.join(cwd, 'client', 'index.html'))) {
-    return path.join(cwd, 'dist', 'public')
-  }
-  // For Render or environments where client structure is flattened
-  return path.join(cwd, 'dist', 'public')
-}
+// Always use client directory if it exists, otherwise use root
+const rootDir = hasClient ? clientPath : cwd
+const outDir = path.join(cwd, 'dist', 'public')
 
-const rootDir = determineRoot()
-const outDir = determineOutDir()
+export default defineConfig(({ mode }) => {
+  const isProduction = mode === 'production'
+  
+  return {
+    root: rootDir,
+    
+    plugins: [
+      react(),
+      splitVendorChunkPlugin(),
+      // Bundle analyzer for optimization (only in build mode)
+      isProduction && visualizer({
+        filename: './dist/bundle-analysis.html',
+        open: false,
+        gzipSize: true,
+        brotliSize: true,
+      })
+    ].filter(Boolean),
 
-export default defineConfig({
-  root: rootDir,
-  plugins: [react()],
-
-  css: {
-    postcss: {
-      // This fixes the PostCSS warning by ensuring the 'from' option is set
-      from: undefined
-    }
-  },
-
-  build: {
-    outDir: outDir,
-    emptyOutDir: true,
-
-    // Code splitting configuration to reduce chunk size
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // Vendor chunks
-          'vendor-react': ['react', 'react-dom'],
-        },
-
-        // Optimize chunk names
-        chunkFileNames: 'assets/[name]-[hash].js',
-        entryFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]'
-      }
+    css: {
+      postcss: {
+        from: undefined
+      },
+      // Optimize CSS
+      devSourcemap: !isProduction,
     },
 
-    // Increase chunk size warning limit (optional, but helps with debugging)
-    chunkSizeWarningLimit: 1000,
+    build: {
+      outDir: outDir,
+      emptyOutDir: true,
+      target: 'es2020',
+      sourcemap: isProduction ? false : 'inline',
+      
+      // STRICTER chunk size warning
+      chunkSizeWarningLimit: 500, // Reduced from 1000 to catch more issues
+      
+      // Enable minification
+      minify: isProduction ? 'esbuild' : false,
+      
+      // Tree-shaking optimizations
+      terserOptions: isProduction ? {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        }
+      } : undefined,
 
-    // Enable minification (using esbuild by default)
-    minify: 'esbuild',
+      // Advanced code splitting configuration
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // Aggressive vendor splitting based on your likely dependencies
+            if (id.includes('node_modules')) {
+              // React core
+              if (id.includes('react') && !id.includes('react-icons')) {
+                return 'vendor-react'
+              }
+              
+              // React Router (if used)
+              if (id.includes('react-router')) {
+                return 'vendor-router'
+              }
+              
+              // Ant Design (COMMON SOURCE OF LARGE BUNDLES)
+              if (id.includes('antd') || id.includes('@ant-design')) {
+                return 'vendor-antd'
+              }
+              
+              // UI libraries
+              if (id.includes('@mui') || id.includes('@chakra-ui') || id.includes('tailwind')) {
+                return 'vendor-ui'
+              }
+              
+              // Date libraries
+              if (id.includes('dayjs') || id.includes('date-fns') || id.includes('moment')) {
+                return 'vendor-date'
+              }
+              
+              // Utility libraries
+              if (id.includes('lodash') || id.includes('axios') || id.includes('@reduxjs')) {
+                return 'vendor-utils'
+              }
+              
+              // Charts/Visualization (if used)
+              if (id.includes('recharts') || id.includes('chart.js') || id.includes('d3')) {
+                return 'vendor-charts'
+              }
+              
+              // Form libraries
+              if (id.includes('formik') || id.includes('react-hook-form') || id.includes('yup')) {
+                return 'vendor-forms'
+              }
+              
+              // Return remaining node_modules as vendor-other
+              return 'vendor-other'
+            }
+            
+            // Split by routes for better code splitting
+            if (id.includes('src/pages/') || id.includes('src/routes/')) {
+              const match = id.match(/src\/(?:pages|routes)\/([^\/]+)/)
+              if (match) {
+                return `page-${match[1]}`
+              }
+            }
+            
+            // Split large feature modules
+            if (id.includes('src/features/')) {
+              const match = id.match(/src\/features\/([^\/]+)/)
+              if (match) {
+                return `feature-${match[1]}`
+              }
+            }
+          },
 
-    // Optimize CSS
-    cssCodeSplit: true,
-  },
+          // Optimize chunk names
+          chunkFileNames: isProduction 
+            ? 'assets/[name]-[hash].js'
+            : 'assets/[name].js',
+          entryFileNames: isProduction 
+            ? 'assets/[name]-[hash].js'
+            : 'assets/[name].js',
+          assetFileNames: isProduction 
+            ? 'assets/[name]-[hash][extname]'
+            : 'assets/[name][extname]'
+        }
+      },
 
-  resolve: {
-    alias: {
-      '@': path.resolve(rootDir, './src'),
-      '@assets': path.resolve(process.cwd(), './attached_assets'),
+      // CSS optimization
+      cssCodeSplit: true,
+      cssMinify: isProduction,
+      
+      // Report bundle size
+      reportCompressedSize: true,
     },
-  },
 
-  server: {
-    proxy: {
-      '/api': {
-        target: process.env.VITE_API_BASE_URL || 'https://zeron-backend-z5o1.onrender.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+    resolve: {
+      alias: {
+        '@': path.resolve(rootDir, 'src'),
+        '@assets': path.resolve(cwd, 'attached_assets'),
+      },
+    },
+
+    server: {
+      proxy: {
+        '/api': {
+          target: process.env.VITE_API_BASE_URL || 'https://zeron-backend-z5o1.onrender.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '')
+        }
       }
+    },
+    
+    // Optimize dependencies
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-router-dom'],
+      exclude: ['@rollup/rollup-linux-x64-gnu'] // Exclude platform-specific binaries
     }
   }
 })
