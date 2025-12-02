@@ -140,6 +140,7 @@ export default function GroupManagement() {
   const [showEditMemberPermissionsDialog, setShowEditMemberPermissionsDialog] = useState(false)
   const [editingMember, setEditingMember] = useState<any>(null)
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const [addMemberRoleCategory, setAddMemberRoleCategory] = useState<'team_lead' | 'team_member' | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -387,16 +388,22 @@ export default function GroupManagement() {
         <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add Member to Group</DialogTitle>
+              <DialogTitle>
+                {addMemberRoleCategory === 'team_lead' ? 'Add Team Lead to Group' : 'Add Team Member to Group'}
+              </DialogTitle>
               <DialogDescription>
-                Select a user and assign specific permissions for this group
+                {addMemberRoleCategory === 'team_lead'
+                  ? 'Select an admin user and assign specific permissions for this group'
+                  : 'Select a sub-admin user and assign specific permissions for this group'}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               {/* User Selection */}
               <div>
-                <Label htmlFor="memberSelect">Select User</Label>
+                <Label htmlFor="memberSelect">
+                  {addMemberRoleCategory === 'team_lead' ? 'Select Admin User' : 'Select Sub-Admin User'}
+                </Label>
                 <select
                   id="memberSelect"
                   value={selectedUserId || ""}
@@ -404,11 +411,18 @@ export default function GroupManagement() {
                   className="w-full px-3 py-2 border rounded-md text-sm"
                 >
                   <option value="">Choose a user...</option>
-                  {users.map((user) => (
-                    <option key={user._id} value={user._id}>
-                      {user.firstName} {user.lastName} ({user.email})
-                    </option>
-                  ))}
+                  {(() => {
+                    const filteredUsers =
+                      addMemberRoleCategory === 'team_lead'
+                        ? users.filter((u: any) => u.role === 'admin')
+                        : users.filter((u: any) => u.role !== 'super_admin' && u.role !== 'admin')
+
+                    return filteredUsers.map((user) => (
+                      <option key={user._id} value={user._id}>
+                        {user.firstName} {user.lastName} ({user.email})
+                      </option>
+                    ))
+                  })()}
                 </select>
               </div>
 
@@ -501,6 +515,7 @@ export default function GroupManagement() {
                     setShowAddMemberDialog(false)
                     setSelectedUserId(null)
                     setSelectedMemberPermissions([])
+                    setAddMemberRoleCategory(null)
                   }}
                 >
                   Cancel
@@ -523,8 +538,9 @@ export default function GroupManagement() {
                     }
                   }}
                   disabled={!selectedUserId}
+                  className={addMemberRoleCategory === 'team_lead' ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'}
                 >
-                  Add Member
+                  {addMemberRoleCategory === 'team_lead' ? 'Add Team Lead' : 'Add Team Member'}
                 </Button>
               </DialogFooter>
             </div>
@@ -881,20 +897,38 @@ export default function GroupManagement() {
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <h4 className="font-semibold text-sm">Members ({group.members?.length || 0})</h4>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-xs hover:bg-blue-100 dark:hover:bg-blue-900"
-                              onClick={() => {
-                                setSelectedGroupForMember(group._id)
-                                // Auto-populate with group's permissions as default
-                                setSelectedMemberPermissions(group.permissions || [])
-                                setShowAddMemberDialog(true)
-                              }}
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Add Member
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                className="text-xs bg-green-600 hover:bg-green-700"
+                                onClick={() => {
+                                  setSelectedGroupForMember(group._id)
+                                  setAddMemberRoleCategory('team_lead')
+                                  setSelectedUserId(null)
+                                  // Auto-populate with group's permissions as default
+                                  setSelectedMemberPermissions(group.permissions || [])
+                                  setShowAddMemberDialog(true)
+                                }}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Team Lead
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="text-xs bg-purple-600 hover:bg-purple-700"
+                                onClick={() => {
+                                  setSelectedGroupForMember(group._id)
+                                  setAddMemberRoleCategory('team_member')
+                                  setSelectedUserId(null)
+                                  // Auto-populate with group's permissions as default
+                                  setSelectedMemberPermissions(group.permissions || [])
+                                  setShowAddMemberDialog(true)
+                                }}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Team Member
+                              </Button>
+                            </div>
                           </div>
                           <div className="space-y-3">
                             {group.members && group.members.length > 0 ? (
