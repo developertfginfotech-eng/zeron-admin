@@ -904,38 +904,21 @@ export default function GroupManagement() {
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <h4 className="font-semibold text-sm">Members ({group.members?.length || 0})</h4>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                className="text-xs bg-green-600 hover:bg-green-700"
-                                onClick={() => {
-                                  setSelectedGroupForMember(group._id)
-                                  setAddMemberRoleCategory('team_lead')
-                                  setSelectedUserId(null)
-                                  // Auto-populate with group's permissions as default
-                                  setSelectedMemberPermissions(group.permissions || [])
-                                  setShowAddMemberDialog(true)
-                                }}
-                              >
-                                <Plus className="h-3 w-3 mr-1" />
-                                Add Team Lead
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="text-xs bg-purple-600 hover:bg-purple-700"
-                                onClick={() => {
-                                  setSelectedGroupForMember(group._id)
-                                  setAddMemberRoleCategory('team_member')
-                                  setSelectedUserId(null)
-                                  // Auto-populate with group's permissions as default
-                                  setSelectedMemberPermissions(group.permissions || [])
-                                  setShowAddMemberDialog(true)
-                                }}
-                              >
-                                <Plus className="h-3 w-3 mr-1" />
-                                Add Team Member
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              className="text-xs bg-purple-600 hover:bg-purple-700"
+                              onClick={() => {
+                                setSelectedGroupForMember(group._id)
+                                setAddMemberRoleCategory('team_member')
+                                setSelectedUserId(null)
+                                // Auto-populate with group's permissions as default
+                                setSelectedMemberPermissions(group.permissions || [])
+                                setShowAddMemberDialog(true)
+                              }}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add Team Member
+                            </Button>
                           </div>
                           <div className="space-y-3">
                             {group.members && group.members.length > 0 ? (
