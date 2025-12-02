@@ -1205,8 +1205,10 @@ export default function AdminDashboard() {
                 <div className="space-y-3">
                   {groups.map((group) => {
                     // Find admin users who belong to this group (team leads)
-                    const teamLead = adminUsers.find(u => u.role === 'admin')
-                    const teamMembers = adminUsers.filter(u => u.role === 'sub_admin')
+                    // Filter by checking if they're in the group's members array
+                    const groupMemberIds = group.members?.map((m: any) => m.userId || m) || []
+                    const teamLead = adminUsers.find(u => u.role === 'admin' && groupMemberIds.includes(u._id))
+                    const teamMembers = adminUsers.filter(u => u.role !== 'super_admin' && groupMemberIds.includes(u._id))
 
                     return (
                       <Card key={group._id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
