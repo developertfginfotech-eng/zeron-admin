@@ -1024,7 +1024,7 @@ export default function AdminDashboard() {
                 <CardTitle className="text-sm font-medium text-green-900">Sub-Admins</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{adminUsers.filter(u => u.role === 'sub_admin' || u.assignedRole?.name === 'sub_admin').length}</div>
+                <div className="text-2xl font-bold text-green-600">{adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin').length}</div>
               </CardContent>
             </Card>
 
