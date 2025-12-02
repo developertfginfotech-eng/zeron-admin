@@ -152,7 +152,9 @@ export default function AdminDashboard() {
   const [showCreateAdminDialog, setShowCreateAdminDialog] = useState(false)
   const [showAdminFunctionsDialog, setShowAdminFunctionsDialog] = useState(false)
   const [selectedEligibleUser, setSelectedEligibleUser] = useState<string | null>(null)
+  const [roleCategory, setRoleCategory] = useState<'team_lead' | 'team_member' | null>(null)
   const [selectedAdminRole, setSelectedAdminRole] = useState<string | null>(null)
+  const [selectedTeamMemberRole, setSelectedTeamMemberRole] = useState<string | null>(null)
   const [isPromoting, setIsPromoting] = useState(false)
   const [selectedGroupsForUser, setSelectedGroupsForUser] = useState<Set<string>>(new Set())
   const [groupPermissionsForUser, setGroupPermissionsForUser] = useState<Record<string, any[]>>({})
@@ -285,7 +287,7 @@ export default function AdminDashboard() {
 
   // Handle creating new admin user
   const handleCreateAdmin = async () => {
-    if (!newAdminForm.firstName || !newAdminForm.lastName || !newAdminForm.email || !newAdminForm.password || !selectedAdminRole) {
+    if (!newAdminForm.firstName || !newAdminForm.lastName || !newAdminForm.email || !newAdminForm.password || !roleCategory) {
       toast({
         title: "Error",
         description: "Please fill all required fields",
@@ -294,8 +296,32 @@ export default function AdminDashboard() {
       return
     }
 
+    let finalRole: string | null = null
+
+    if (roleCategory === 'team_lead') {
+      finalRole = selectedAdminRole
+      if (!selectedGroupsForUser.size) {
+        toast({
+          title: "Error",
+          description: "Please assign the Team Lead to at least one department",
+          variant: "destructive"
+        })
+        return
+      }
+    } else if (roleCategory === 'team_member') {
+      finalRole = selectedTeamMemberRole
+      if (!finalRole) {
+        toast({
+          title: "Error",
+          description: "Please select a specific role for the Team Member",
+          variant: "destructive"
+        })
+        return
+      }
+    }
+
     // Validate selected role
-    if (!isValidRoleName(selectedAdminRole)) {
+    if (!finalRole || !isValidRoleName(finalRole)) {
       toast({
         title: "Invalid Role",
         description: `Selected role is not valid. Role must be one of: ${VALID_ROLE_NAMES.join(', ')}`,
@@ -317,20 +343,23 @@ export default function AdminDashboard() {
           phone: newAdminForm.phone || undefined,
           position: newAdminForm.position || undefined,
           password: newAdminForm.password,
-          role: selectedAdminRole,
+          role: finalRole,
           groupIds: groupIds.length > 0 ? groupIds : undefined
         })
       })
 
       if (response.success) {
+        const roleLabel = roleCategory === 'team_lead' ? 'Team Lead' : 'Team Member'
         toast({
           title: "Success",
-          description: `Admin user ${newAdminForm.firstName} ${newAdminForm.lastName} created successfully${selectedGroupsForUser.size > 0 ? ` and added to ${selectedGroupsForUser.size} group(s)` : ''}`,
+          description: `${roleLabel} ${newAdminForm.firstName} ${newAdminForm.lastName} created successfully${selectedGroupsForUser.size > 0 ? ` and added to ${selectedGroupsForUser.size} team(s)` : ''}`,
         })
         // Close dialog and reset state
         setShowCreateAdminDialog(false)
         setNewAdminForm({ firstName: '', lastName: '', email: '', phone: '', position: '', password: '' })
+        setRoleCategory(null)
         setSelectedAdminRole(null)
+        setSelectedTeamMemberRole(null)
         setSelectedGroupsForUser(new Set())
         setGroupPermissionsForUser({})
         // Refresh admin data
@@ -345,6 +374,15 @@ export default function AdminDashboard() {
     } finally {
       setIsPromoting(false)
     }
+  }
+
+  // Handle opening create admin dialog
+  const handleOpenCreateAdminDialog = () => {
+    setShowCreateAdminDialog(true)
+    setRoleCategory(null)
+    setSelectedAdminRole(null)
+    setSelectedTeamMemberRole(null)
+    setSelectedGroupsForUser(new Set())
   }
 
   // Handle promoting a user to admin role and adding to groups
@@ -554,7 +592,7 @@ export default function AdminDashboard() {
           <p className="text-muted-foreground">Manage administrator access and permissions</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={() => setShowCreateAdminDialog(true)}>
+          <Button onClick={handleOpenCreateAdminDialog}>
             <UserCog className="h-4 w-4 mr-2" />
             Add Administrator
           </Button>
@@ -678,7 +716,7 @@ export default function AdminDashboard() {
                 </Button>
 
                 <Button
-                  onClick={() => setShowCreateAdminDialog(true)}
+                  onClick={handleOpenCreateAdminDialog}
                   className="bg-indigo-600 hover:bg-indigo-700 h-20 flex flex-col items-center justify-center gap-2"
                 >
                   <Plus className="h-5 w-5" />
@@ -721,7 +759,7 @@ export default function AdminDashboard() {
               <p className="text-muted-foreground mt-1">Create, manage, and assign admin roles</p>
             </div>
             <Button
-              onClick={() => setShowCreateAdminDialog(true)}
+              onClick={handleOpenCreateAdminDialog}
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -1236,7 +1274,7 @@ export default function AdminDashboard() {
             <Button
               variant="outline"
               className="h-24 flex flex-col gap-2 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer"
-              onClick={() => setShowCreateAdminDialog(true)}
+              onClick={handleOpenCreateAdminDialog}
             >
               <UserCog className="h-6 w-6" />
               <div className="text-center">
@@ -1563,82 +1601,151 @@ export default function AdminDashboard() {
               </>
             )}
 
-            {/* Shared: Role Selection */}
+            {/* Shared: Role Category Selection */}
             <div className="space-y-2 pt-2 border-t">
-              <label className="text-sm font-medium">Select Admin Role</label>
-              <Select value={selectedAdminRole || ""} onValueChange={setSelectedAdminRole}>
-                <SelectTrigger className={selectedAdminRole && !isValidRoleName(selectedAdminRole) ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Choose a role..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.length > 0 ? (
-                    roles.filter(role => role.name !== 'super_admin').map((role) => {
-                      const isValid = isValidRoleName(role.name)
-                      return (
+              <label className="text-sm font-medium">Select User Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setRoleCategory('team_lead')
+                    setSelectedTeamMemberRole(null)
+                    setSelectedAdminRole('admin')
+                  }}
+                  className={`p-3 rounded-lg border-2 transition ${
+                    roleCategory === 'team_lead'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="font-medium text-sm">Team Lead</div>
+                  <div className="text-xs text-muted-foreground">Manages a department</div>
+                </button>
+                <button
+                  onClick={() => {
+                    setRoleCategory('team_member')
+                    setSelectedAdminRole(null)
+                  }}
+                  className={`p-3 rounded-lg border-2 transition ${
+                    roleCategory === 'team_member'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="font-medium text-sm">Team Member</div>
+                  <div className="text-xs text-muted-foreground">Member with specific role</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Team Lead: Department Selection */}
+            {roleCategory === 'team_lead' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Assign to Department</label>
+                <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
+                  {groups.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No departments available</p>
+                  ) : (
+                    groups.map((group) => (
+                      <div key={group._id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`dept-${group._id}`}
+                          checked={selectedGroupsForUser.has(group._id)}
+                          onChange={(e) => {
+                            const newGroups = new Set(selectedGroupsForUser)
+                            if (e.target.checked) {
+                              newGroups.clear()
+                              newGroups.add(group._id)
+                            } else {
+                              newGroups.delete(group._id)
+                            }
+                            setSelectedGroupsForUser(newGroups)
+                          }}
+                          className="rounded"
+                        />
+                        <label htmlFor={`dept-${group._id}`} className="text-sm cursor-pointer flex-1">
+                          <div className="font-medium">{group.displayName}</div>
+                          <div className="text-xs text-muted-foreground">{group.department || 'Department'}</div>
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Team Member: Specific Role Selection */}
+            {roleCategory === 'team_member' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Specific Role</label>
+                <Select value={selectedTeamMemberRole || ""} onValueChange={setSelectedTeamMemberRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a role..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.length > 0 ? (
+                      roles.filter(role =>
+                        role.name !== 'super_admin' &&
+                        role.name !== 'admin' &&
+                        isValidRoleName(role.name)
+                      ).map((role) => (
                         <SelectItem key={role._id} value={role.name}>
                           <div>
                             <div className="font-medium">{role.displayName}</div>
-                            {!isValid && (
-                              <div className="text-xs text-red-600">⚠️ Invalid role name</div>
-                            )}
-                            {role.description && isValid && (
+                            {role.description && (
                               <div className="text-xs text-muted-foreground">
                                 {role.description}
                               </div>
                             )}
                           </div>
                         </SelectItem>
-                      )
-                    })
-                  ) : (
-                    <SelectItem value="" disabled>
-                      Loading roles...
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              {selectedAdminRole && !isValidRoleName(selectedAdminRole) && (
-                <p className="text-xs text-red-600">⚠️ Selected role name is not valid. Role must be one of: {VALID_ROLE_NAMES.join(', ')}</p>
-              )}
-              {roles.length === 0 && (
-                <p className="text-xs text-amber-600">No roles available. Create roles first.</p>
-              )}
-            </div>
-
-            {/* Shared: Add to Groups */}
-            <div className="space-y-2 pt-2 border-t">
-              <label className="text-sm font-medium">Add to Groups (Optional)</label>
-              <p className="text-xs text-muted-foreground">Select which groups this user should be added to</p>
-              <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
-                {groups.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No groups available</p>
-                ) : (
-                  groups.map((group) => (
-                    <div key={group._id} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`group-${group._id}`}
-                        checked={selectedGroupsForUser.has(group._id)}
-                        onChange={(e) => {
-                          const newGroups = new Set(selectedGroupsForUser)
-                          if (e.target.checked) {
-                            newGroups.add(group._id)
-                          } else {
-                            newGroups.delete(group._id)
-                          }
-                          setSelectedGroupsForUser(newGroups)
-                        }}
-                        className="rounded"
-                      />
-                      <label htmlFor={`group-${group._id}`} className="text-sm cursor-pointer flex-1">
-                        <div className="font-medium">{group.displayName}</div>
-                        <div className="text-xs text-muted-foreground">{group.department || 'No department'}</div>
-                      </label>
-                    </div>
-                  ))
-                )}
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        Loading roles...
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
+            )}
+
+            {/* Team Member: Add to Team (Department) */}
+            {roleCategory === 'team_member' && (
+              <div className="space-y-2 pt-2 border-t">
+                <label className="text-sm font-medium">Assign to Team/Department</label>
+                <p className="text-xs text-muted-foreground">Select which team this member should join</p>
+                <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
+                  {groups.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No teams available</p>
+                  ) : (
+                    groups.map((group) => (
+                      <div key={group._id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`team-${group._id}`}
+                          checked={selectedGroupsForUser.has(group._id)}
+                          onChange={(e) => {
+                            const newGroups = new Set(selectedGroupsForUser)
+                            if (e.target.checked) {
+                              newGroups.add(group._id)
+                            } else {
+                              newGroups.delete(group._id)
+                            }
+                            setSelectedGroupsForUser(newGroups)
+                          }}
+                          className="rounded"
+                        />
+                        <label htmlFor={`team-${group._id}`} className="text-sm cursor-pointer flex-1">
+                          <div className="font-medium">{group.displayName}</div>
+                          <div className="text-xs text-muted-foreground">{group.department || 'Team'}</div>
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
