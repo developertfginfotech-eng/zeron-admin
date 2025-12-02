@@ -263,12 +263,21 @@ export default function AdminDashboard() {
         const eligibleResponse = await apiCall('/api/admin/eligible-users')
         console.log('Eligible users response:', eligibleResponse)
 
-        if (eligibleResponse.success && eligibleResponse.data) {
+        if (eligibleResponse.success && eligibleResponse.data && eligibleResponse.data.users && eligibleResponse.data.users.length > 0) {
           setEligibleUsers(eligibleResponse.data.users || [])
+        } else {
+          // Fallback: use regular users as eligible for promotion
+          console.warn('No eligible users from endpoint, using regular users as fallback')
+          if (usersResponse.success && usersResponse.data) {
+            setEligibleUsers(usersResponse.data.users || [])
+          }
         }
       } catch (eligibleErr) {
-        // Don't fail if eligible users endpoint has permission issues
-        console.warn('Could not fetch eligible users:', eligibleErr)
+        // Fallback: use regular users as eligible for promotion
+        console.warn('Could not fetch eligible users, using regular users as fallback:', eligibleErr)
+        if (usersResponse.success && usersResponse.data) {
+          setEligibleUsers(usersResponse.data.users || [])
+        }
       }
 
       // Fetch dashboard stats
