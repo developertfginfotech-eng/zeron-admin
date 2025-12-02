@@ -60,81 +60,22 @@ export default defineConfig(({ mode }) => {
         }
       } : undefined,
 
-      // Advanced code splitting configuration
+      // Code splitting configuration
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            // Aggressive vendor splitting based on your likely dependencies
-            if (id.includes('node_modules')) {
-              // React core
-              if (id.includes('react') && !id.includes('react-icons')) {
-                return 'vendor-react'
-              }
-              
-              // React Router (if used)
-              if (id.includes('react-router')) {
-                return 'vendor-router'
-              }
-              
-              // Ant Design (COMMON SOURCE OF LARGE BUNDLES)
-              if (id.includes('antd') || id.includes('@ant-design')) {
-                return 'vendor-antd'
-              }
-              
-              // UI libraries
-              if (id.includes('@mui') || id.includes('@chakra-ui') || id.includes('tailwind')) {
-                return 'vendor-ui'
-              }
-              
-              // Date libraries
-              if (id.includes('dayjs') || id.includes('date-fns') || id.includes('moment')) {
-                return 'vendor-date'
-              }
-              
-              // Utility libraries
-              if (id.includes('lodash') || id.includes('axios') || id.includes('@reduxjs')) {
-                return 'vendor-utils'
-              }
-              
-              // Charts/Visualization (if used)
-              if (id.includes('recharts') || id.includes('chart.js') || id.includes('d3')) {
-                return 'vendor-charts'
-              }
-              
-              // Form libraries
-              if (id.includes('formik') || id.includes('react-hook-form') || id.includes('yup')) {
-                return 'vendor-forms'
-              }
-              
-              // Return remaining node_modules as vendor-other
-              return 'vendor-other'
-            }
-            
-            // Split by routes for better code splitting
-            if (id.includes('src/pages/') || id.includes('src/routes/')) {
-              const match = id.match(/src\/(?:pages|routes)\/([^\/]+)/)
-              if (match) {
-                return `page-${match[1]}`
-              }
-            }
-            
-            // Split large feature modules
-            if (id.includes('src/features/')) {
-              const match = id.match(/src\/features\/([^\/]+)/)
-              if (match) {
-                return `feature-${match[1]}`
-              }
-            }
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
           },
 
           // Optimize chunk names
-          chunkFileNames: isProduction 
+          chunkFileNames: isProduction
             ? 'assets/[name]-[hash].js'
             : 'assets/[name].js',
-          entryFileNames: isProduction 
+          entryFileNames: isProduction
             ? 'assets/[name]-[hash].js'
             : 'assets/[name].js',
-          assetFileNames: isProduction 
+          assetFileNames: isProduction
             ? 'assets/[name]-[hash][extname]'
             : 'assets/[name][extname]'
         }
