@@ -237,18 +237,24 @@ export default function Analytics() {
                   </div>
                 </div>
                 <div className="flex gap-1 h-2">
-                  <div 
-                    className="bg-green-500 rounded"
-                    style={{ 
-                      width: `${(week.investment / (week.investment + week.withdrawal)) * 100}%` 
-                    }}
-                  ></div>
-                  <div 
-                    className="bg-red-500 rounded"
-                    style={{ 
-                      width: `${(week.withdrawal / (week.investment + week.withdrawal)) * 100}%` 
-                    }}
-                  ></div>
+                  {(week.investment + week.withdrawal) > 0 ? (
+                    <>
+                      <div
+                        className="bg-green-500 rounded"
+                        style={{
+                          width: `${(week.investment / (week.investment + week.withdrawal)) * 100}%`
+                        }}
+                      ></div>
+                      <div
+                        className="bg-red-500 rounded"
+                        style={{
+                          width: `${(week.withdrawal / (week.investment + week.withdrawal)) * 100}%`
+                        }}
+                      ></div>
+                    </>
+                  ) : (
+                    <div className="w-full bg-gray-200 rounded"></div>
+                  )}
                 </div>
               </div>
               ))
