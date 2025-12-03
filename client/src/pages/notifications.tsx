@@ -130,37 +130,66 @@ export default function Notifications() {
     },
   ]
 
-  const unreadCount = mockNotifications.filter(n => !n.isRead).length
-
   const handleMarkAsRead = (id: string) => {
-    console.log('Marked as read:', id)
-    // In real app, this would update the notification status
+    // Mark individual notification as read via API
+    // This will be handled by NotificationCard component
   }
 
   const handleDelete = (id: string) => {
-    console.log('Deleted notification:', id)
-    // In real app, this would delete the notification
+    // Delete notification (future implementation)
+    console.log('Delete notification:', id)
   }
 
-  const handleMarkAllAsRead = () => {
-    console.log('Mark all as read triggered')
-    toast({
-      title: "All Notifications Marked as Read",
-      description: "All notifications have been marked as read.",
-    })
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsReadMutation.mutateAsync()
+      toast({
+        title: "All Notifications Marked as Read",
+        description: "All notifications have been marked as read.",
+      })
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to mark notifications as read",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleCreateNotification = (e: React.FormEvent) => {
+  const handleCreateNotification = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Create notification:', newNotification)
-    
-    toast({
-      title: "Notification Sent",
-      description: "Your notification has been sent to all users.",
-    })
-    
-    setNewNotification({ title: '', message: '', type: 'info' })
-    setShowCreateForm(false)
+
+    if (!newNotification.title.trim() || !newNotification.message.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Title and message are required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      await createNotificationMutation.mutateAsync({
+        title: newNotification.title,
+        message: newNotification.message,
+        type: newNotification.type || 'general',
+        priority: newNotification.priority || 'normal',
+      })
+
+      toast({
+        title: "Notification Sent",
+        description: "Your notification has been sent successfully.",
+      })
+
+      setNewNotification({ title: '', message: '', type: 'general', priority: 'normal' })
+      setShowCreateForm(false)
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to create notification",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -233,72 +262,95 @@ export default function Notifications() {
         </Alert>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+            <p className="text-muted-foreground">Loading notifications...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Loading Notifications</AlertTitle>
+          <AlertDescription>
+            {error instanceof Error ? error.message : 'Failed to load notifications'}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card data-testid="card-total-notifications">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Notifications
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {mockNotifications.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              All time
-            </p>
-          </CardContent>
-        </Card>
+      {!isLoading && !error && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card data-testid="card-total-notifications">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Notifications
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {summary.total}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                All time
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card data-testid="card-unread-notifications">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Unread
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {unreadCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Require attention
-            </p>
-          </CardContent>
-        </Card>
+          <Card data-testid="card-unread-notifications">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Unread
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {summary.unread}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Require attention
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card data-testid="card-system-alerts">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              System Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {mockNotifications.filter(n => n.type === 'error').length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Critical issues
-            </p>
-          </CardContent>
-        </Card>
+          <Card data-testid="card-system-alerts">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                System Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {summary.errors}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Critical issues
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card data-testid="card-warnings">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Warnings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {mockNotifications.filter(n => n.type === 'warning').length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Need review
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card data-testid="card-warnings">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Warnings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-600">
+                {summary.warnings}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Need review
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Create Notification Form */}
       {showCreateForm && (
