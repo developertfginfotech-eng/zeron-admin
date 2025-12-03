@@ -7,22 +7,47 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Plus, Send, Bookmark, AlertTriangle, CheckCircle, Bell } from "lucide-react"
-import { Notification } from "@shared/schema"
+import { Plus, Send, Bookmark, AlertTriangle, CheckCircle, Bell, Loader2, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useNotifications, useMarkAllNotificationsAsRead, useCreateNotification } from "@/hooks/use-notifications"
 
 export default function Notifications() {
-  // todo: remove mock functionality
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newNotification, setNewNotification] = useState({
     title: '',
     message: '',
-    type: 'info'
+    type: 'general',
+    priority: 'normal'
   })
 
   const { toast } = useToast()
 
-  const mockNotifications: Notification[] = [
+  // Fetch real notifications
+  const { data: notificationsData, isLoading, error, refetch } = useNotifications({ limit: 20 })
+  const markAllAsReadMutation = useMarkAllNotificationsAsRead()
+  const createNotificationMutation = useCreateNotification()
+
+  // Extract data from response
+  const notifications = (notificationsData?.data || []).map((notif: any) => ({
+    id: notif.id,
+    title: notif.title,
+    message: notif.message,
+    type: notif.type,
+    isRead: notif.isRead,
+    createdAt: new Date(notif.createdAt),
+  })) || []
+
+  const summary = notificationsData?.summary || {
+    total: 0,
+    unread: 0,
+    errors: 0,
+    warnings: 0
+  }
+
+  const unreadCount = summary.unread
+
+  // Fallback to mock data if no real data
+  const mockNotifications = [
     {
       id: '1',
       title: 'KYC Approved',
