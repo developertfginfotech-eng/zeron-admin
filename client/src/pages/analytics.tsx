@@ -82,10 +82,10 @@ export default function Analytics() {
               <SelectValue placeholder="Select date range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="last_7_days">Last 7 days</SelectItem>
-              <SelectItem value="last_30_days">Last 30 days</SelectItem>
-              <SelectItem value="last_90_days">Last 90 days</SelectItem>
-              <SelectItem value="last_year">Last year</SelectItem>
+              <SelectItem value="7days">Last 7 days</SelectItem>
+              <SelectItem value="30days">Last 30 days</SelectItem>
+              <SelectItem value="90days">Last 90 days</SelectItem>
+              <SelectItem value="1year">Last year</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={handleExportReport} data-testid="button-export-report">
