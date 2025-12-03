@@ -88,14 +88,19 @@ export default function Transactions() {
     )
   }
 
+  // Build investor data map from transactions
   const investorsMap = new Map<string, any>(
     (transactionsData?.transactions || []).map((t: any) => [
       t.investorId,
-      t.investor || {} // investor object populated from backend
+      {
+        name: t.investorName || 'Unknown',
+        email: t.investorEmail || '',
+        id: t.investorId
+      }
     ])
   )
 
-  const getInvestorById = (id: string): any => investorsMap.get(id) || {}
+  const getInvestorById = (id: string): any => investorsMap.get(id) || { name: 'Unknown' }
 
   const filteredTransactions = transactions.filter((transaction: any) => {
     const investor = getInvestorById(transaction.investorId || '')
@@ -352,9 +357,10 @@ export default function Transactions() {
     .filter((t: any) => t.type === 'payout' && t.status === 'completed')
     .reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 
-  const totalWithdrawals = localWithdrawals
-    .filter(w => w.status === 'completed' || w.status === 'approved')
-    .reduce((sum, w) => sum + Number(w.amount), 0)
+  // Count withdrawals from transactions (type: 'withdrawal')
+  const totalWithdrawals = transactions
+    .filter((t: any) => t.type === 'withdrawal' && t.status === 'completed')
+    .reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 
   const pendingWithdrawals = localWithdrawals.filter(w => w.status === 'pending').length
 
@@ -436,73 +442,73 @@ export default function Transactions() {
           </CardContent>
         </Card>
 
-        {/* Summary Cards */}
+        {/* Summary Cards - Financial Transaction Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="glass-morphism" data-testid="card-total-investments">
+          <Card className="glass-morphism border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent" data-testid="card-total-investments">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Investments
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Investment Orders
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Financial transaction records</p>
+              </div>
+              <TrendingUp className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-3xl font-bold text-green-600">
                 {totalInvestments.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                From completed transactions
-              </p>
             </CardContent>
           </Card>
 
-          <Card className="glass-morphism" data-testid="card-total-payouts">
+          <Card className="glass-morphism border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent" data-testid="card-total-payouts">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Payouts
-              </CardTitle>
-              <Banknote className="h-4 w-4 text-blue-600" />
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Returns Distributed
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Payout transactions sent</p>
+              </div>
+              <Banknote className="h-5 w-5 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-3xl font-bold text-blue-600">
                 {totalPayouts.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Distributed to investors
-              </p>
             </CardContent>
           </Card>
 
-          <Card className="glass-morphism" data-testid="card-total-withdrawals">
+          <Card className="glass-morphism border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-transparent" data-testid="card-total-withdrawals">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Withdrawals
-              </CardTitle>
-              <TrendingDown className="h-4 w-4 text-orange-600" />
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Wallet Withdrawals
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Funds withdrawn to accounts</p>
+              </div>
+              <TrendingDown className="h-5 w-5 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-3xl font-bold text-orange-600">
                 {totalWithdrawals.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Processed withdrawals
-              </p>
             </CardContent>
           </Card>
 
-          <Card className="glass-morphism" data-testid="card-pending-withdrawals">
+          <Card className="glass-morphism border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-transparent" data-testid="card-pending-withdrawals">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending Requests
-              </CardTitle>
-              <Clock className="h-4 w-4 text-yellow-600" />
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Pending Actions
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Requiring approval</p>
+              </div>
+              <Clock className="h-5 w-5 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
+              <div className="text-3xl font-bold text-yellow-600">
                 {pendingWithdrawals}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Awaiting approval
-              </p>
             </CardContent>
           </Card>
         </div>

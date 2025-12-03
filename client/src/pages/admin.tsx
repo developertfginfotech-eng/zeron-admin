@@ -86,6 +86,16 @@ const apiCall = async (endpoint: string, options?: RequestInit) => {
 // Helper function to decode JWT and get current user info
 const getCurrentUser = (): any => {
   try {
+    // First try to get user data from localStorage (includes role)
+    const userDataStr = localStorage.getItem('userData')
+    if (userDataStr) {
+      const userData = JSON.parse(userDataStr)
+      if (userData && userData.role) {
+        return userData
+      }
+    }
+
+    // Fallback to decoding token if userData not available
     const token = localStorage.getItem('zaron_token') || localStorage.getItem('authToken')
     if (!token) return null
 
@@ -95,7 +105,7 @@ const getCurrentUser = (): any => {
     const decoded = JSON.parse(atob(parts[1]))
     return decoded
   } catch (err) {
-    console.error('Error decoding token:', err)
+    console.error('Error getting current user:', err)
     return null
   }
 }

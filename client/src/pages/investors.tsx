@@ -2199,15 +2199,26 @@ export default function Investors() {
           portfolio: investor.portfolio || {
             id: `port${investor.id}`,
             investorId: investor.id,
-            totalInvestment: investor.investmentSummary?.totalInvested?.toString() || investor.totalInvestments?.toString() || '0',
-            currentValue: investor.investmentSummary?.totalInvested?.toString() || investor.totalInvestments?.toString() || '0',
-            totalReturns: investor.investmentSummary?.totalReturns?.toString() || investor.totalReturns?.toString() || '0',
-            totalDividends: '0',
-            totalWithdrawals: '0',
-            unrealizedGains: '0',
-            realizedGains: '0',
-            riskScore: investor.aiRiskScore || 5,
-            performanceScore: 75,
+            totalInvestment: investor.investmentSummary?.totalInvested?.toString() || investor.portfolio?.totalInvestment?.toString() || investor.totalInvestments?.toString() || '0',
+            // Use actual currentValue from API, calculate if not available
+            currentValue: investor.investmentSummary?.totalCurrentValue?.toString() ||
+                         investor.portfolio?.currentValue?.toString() ||
+                         investor.currentValue?.toString() ||
+                         (Number(investor.investmentSummary?.totalInvested || investor.portfolio?.totalInvestment || 0) + Number(investor.investmentSummary?.totalReturns || investor.portfolio?.totalReturns || 0)).toString() ||
+                         investor.totalInvestments?.toString() || '0',
+            totalReturns: investor.investmentSummary?.totalReturns?.toString() || investor.portfolio?.totalReturns?.toString() || investor.totalReturns?.toString() || '0',
+            totalDividends: investor.investmentSummary?.totalDividends?.toString() || investor.portfolio?.totalDividends?.toString() || '0',
+            totalWithdrawals: investor.investmentSummary?.totalWithdrawals?.toString() || investor.portfolio?.totalWithdrawals?.toString() || '0',
+            unrealizedGains: investor.investmentSummary?.unrealizedGains?.toString() || investor.portfolio?.unrealizedGains?.toString() || investor.totalReturns?.toString() || '0',
+            realizedGains: investor.investmentSummary?.realizedGains?.toString() || investor.portfolio?.realizedGains?.toString() || '0',
+            riskScore: investor.aiRiskScore || investor.portfolio?.riskScore || 5,
+            // Calculate performance score from actual data if available
+            performanceScore: investor.investmentSummary?.performanceScore ||
+                            investor.portfolio?.performanceScore ||
+                            investor.investmentSummary?.portfolioGrowthPercentage ||
+                            (Number(investor.totalInvestments || investor.portfolio?.totalInvestment || 0) > 0
+                              ? Math.round((Number(investor.totalReturns || investor.portfolio?.totalReturns || 0) / Number(investor.totalInvestments || investor.portfolio?.totalInvestment || 1)) * 100)
+                              : 0),
             lastUpdated: new Date(),
           },
           profileData: investor.profileData || null,
@@ -2508,71 +2519,71 @@ export default function Investors() {
 
         {/* Portfolio Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="glass-morphism" data-testid="card-total-investment">
+          <Card className="glass-morphism border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent" data-testid="card-total-investment">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Investment
-              </CardTitle>
-              <Wallet className="h-4 w-4 text-green-600" />
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Investment Holdings
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Total capital invested in properties</p>
+              </div>
+              <Wallet className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-3xl font-bold text-green-600">
                 {investors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.totalInvestment), 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Across all portfolios
-              </p>
             </CardContent>
           </Card>
 
-          <Card className="glass-morphism" data-testid="card-current-value">
+          <Card className="glass-morphism border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent" data-testid="card-current-value">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Current Value
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-primary" />
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Portfolio Value
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Current worth of all holdings</p>
+              </div>
+              <TrendingUp className="h-5 w-5 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-3xl font-bold text-blue-600">
                 {investors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.currentValue), 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Live portfolio value
-              </p>
             </CardContent>
           </Card>
 
-          <Card className="glass-morphism" data-testid="card-total-returns">
+          <Card className="glass-morphism border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent" data-testid="card-total-returns">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Returns
-              </CardTitle>
-              <ArrowUpRight className="h-4 w-4 text-green-600" />
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Earned Returns
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Rental yield + appreciation gains</p>
+              </div>
+              <ArrowUpRight className="h-5 w-5 text-emerald-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-3xl font-bold text-emerald-600">
                 {investors.reduce((sum, inv) => sum + safeParseNumber(inv.portfolio.totalReturns), 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Total profit generated
-              </p>
             </CardContent>
           </Card>
 
-          <Card className="glass-morphism" data-testid="card-avg-performance">
+          <Card className="glass-morphism border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent" data-testid="card-avg-performance">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Avg Performance
-              </CardTitle>
-              <PieChart className="h-4 w-4 text-primary" />
+              <div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Avg ROI Performance
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Return on invested capital</p>
+              </div>
+              <PieChart className="h-5 w-5 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-3xl font-bold text-purple-600">
                 {Math.round(investors.reduce((sum, inv) => sum + safePerformanceScore(inv.portfolio.performanceScore), 0) / (investors.length || 1))}%
               </div>
-              <p className="text-xs text-muted-foreground">
-                Portfolio performance
-              </p>
             </CardContent>
           </Card>
         </div>
