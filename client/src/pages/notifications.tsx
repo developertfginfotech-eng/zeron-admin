@@ -361,7 +361,7 @@ export default function Notifications() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateNotification} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label htmlFor="title" className="text-sm font-medium">Title</label>
                   <Input
@@ -380,10 +380,24 @@ export default function Notifications() {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="info">Info</SelectItem>
-                      <SelectItem value="success">Success</SelectItem>
-                      <SelectItem value="warning">Warning</SelectItem>
-                      <SelectItem value="error">Error</SelectItem>
+                      <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="system_announcement">System Announcement</SelectItem>
+                      <SelectItem value="app_update">App Update</SelectItem>
+                      <SelectItem value="policy_change">Policy Change</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="priority" className="text-sm font-medium">Priority</label>
+                  <Select value={newNotification.priority} onValueChange={(value) => setNewNotification(prev => ({ ...prev, priority: value }))}>
+                    <SelectTrigger data-testid="select-notification-priority">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -415,17 +429,33 @@ export default function Notifications() {
       )}
 
       {/* Notifications List */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Recent Notifications</h2>
-        {mockNotifications.map((notification) => (
-          <NotificationCard
-            key={notification.id}
-            notification={notification}
-            onMarkAsRead={handleMarkAsRead}
-            onDelete={handleDelete}
-          />
-        ))}
-      </div>
+      {!isLoading && !error && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Recent Notifications</h2>
+          {notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <NotificationCard
+                key={notification.id}
+                notification={{
+                  id: notification.id,
+                  title: notification.title,
+                  message: notification.message,
+                  type: notification.type,
+                  isRead: notification.isRead,
+                  createdAt: notification.createdAt,
+                }}
+                onMarkAsRead={handleMarkAsRead}
+                onDelete={handleDelete}
+              />
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No notifications yet</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
