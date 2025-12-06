@@ -137,6 +137,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     proxyToBackend(req, res, "PUT", `/api/admin/admin-users/${req.params.id}/role`)
   );
 
+  // Delete admin user
+  app.delete("/api/admin/admin-users/:id", (req, res) =>
+    proxyToBackend(req, res, "DELETE", `/api/admin/admin-users/${req.params.id}`)
+  );
+
   // User promotion
   app.get("/api/admin/eligible-users", (req, res) =>
     proxyToBackend(req, res, "GET", "/api/admin/eligible-users")

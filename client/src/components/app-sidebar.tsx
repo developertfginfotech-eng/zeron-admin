@@ -1,13 +1,14 @@
-import { 
-  Building2, 
+import {
+  Building2,
   UserCheck,
-  TrendingUp, 
-  FileText, 
-  Bell, 
+  TrendingUp,
+  FileText,
+  Bell,
   BarChart3,
   Home,
   Shield,
-  Settings
+  Settings,
+  CheckSquare
 } from "lucide-react"
 import { Link, useLocation } from "wouter"
 
@@ -64,6 +65,11 @@ const items = [
 
 const adminItems = [
   {
+    title: "Admin Approvals",
+    url: "/admin/approvals",
+    icon: CheckSquare,
+  },
+  {
     title: "Admin Roles",
     url: "/admin",
     icon: Shield,
@@ -77,6 +83,31 @@ const adminItems = [
 
 export function AppSidebar() {
   const [location] = useLocation()
+
+  // Get user role from localStorage (stored in userData JSON object)
+  const getUserRole = () => {
+    if (typeof window === 'undefined') return null
+
+    try {
+      // Try to get role from userData JSON object
+      const userData = localStorage.getItem('userData')
+      if (userData) {
+        const user = JSON.parse(userData)
+        return user.role
+      }
+
+      // Fallback: check for direct role key
+      return localStorage.getItem('userRole') || localStorage.getItem('role')
+    } catch (error) {
+      console.error('Error getting user role:', error)
+      return null
+    }
+  }
+
+  const userRole = getUserRole()
+
+  // Only show Administration section to Super Admins
+  const isSuperAdmin = userRole === 'super_admin'
 
   return (
     <Sidebar className="glass-card border-r-0">
@@ -111,24 +142,27 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>Administration</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location === item.url}>
-                    <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+
+        {/* Only show Administration section to Super Admins */}
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={location === item.url}>
+                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   )

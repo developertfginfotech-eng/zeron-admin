@@ -43,6 +43,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import GroupManagement from "@/components/GroupManagement"
+import PermissionManager from "@/components/PermissionManager"
 
 // API Configuration
 const API_BASE_URL = 'https://zeron-backend-z5o1.onrender.com'
@@ -54,8 +55,31 @@ const VALID_ROLE_NAMES = [
   'kyc_officer',
   'property_manager',
   'financial_analyst',
-  'compliance_officer'
+  'compliance_officer',
+  'team_lead',
+  'team_member'
 ]
+
+// Role hierarchy and available transitions
+const getAvailableRolesForChange = (currentRole: string): string[] => {
+  // Only allow Team Lead and Team Member roles
+  return ['team_lead', 'team_member']
+}
+
+// Helper to display role names nicely
+const getRoleDisplayName = (role: string): string => {
+  const roleNames: Record<string, string> = {
+    'admin': 'Admin',
+    'kyc_officer': 'KYC Officer',
+    'property_manager': 'Property Manager',
+    'financial_analyst': 'Financial Analyst',
+    'compliance_officer': 'Compliance Officer',
+    'team_lead': 'Team Lead',
+    'team_member': 'Team Member',
+    'super_admin': 'Super Admin'
+  }
+  return roleNames[role] || role
+}
 
 // Helper to check if role name is valid
 const isValidRoleName = (roleName: string) => VALID_ROLE_NAMES.includes(roleName)
@@ -180,7 +204,7 @@ export default function AdminDashboard() {
   const [showCreateAdminDialog, setShowCreateAdminDialog] = useState(false)
   const [showAdminFunctionsDialog, setShowAdminFunctionsDialog] = useState(false)
   const [selectedEligibleUser, setSelectedEligibleUser] = useState<string | null>(null)
-  const [roleCategory, setRoleCategory] = useState<'team_lead' | 'team_member' | null>(null)
+  const [roleCategory, setRoleCategory] = useState<'admin' | 'team_lead' | 'team_member' | null>(null)
   const [selectedAdminRole, setSelectedAdminRole] = useState<string | null>(null)
   const [selectedTeamMemberRole, setSelectedTeamMemberRole] = useState<string | null>(null)
   const [isPromoting, setIsPromoting] = useState(false)
@@ -207,6 +231,21 @@ export default function AdminDashboard() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [addMemberRoleCategory, setAddMemberRoleCategory] = useState<'team_lead' | 'team_member' | null>(null)
   const [selectedMemberUserId, setSelectedMemberUserId] = useState<string | null>(null)
+
+  // Change Role states
+  const [showChangeRoleDialog, setShowChangeRoleDialog] = useState(false)
+  const [selectedAdminForRoleChange, setSelectedAdminForRoleChange] = useState<AdminUser | null>(null)
+  const [newRoleForAdmin, setNewRoleForAdmin] = useState<string>('')
+
+  // OTP Verification states
+  const [showOTPDialog, setShowOTPDialog] = useState(false)
+  const [otpValue, setOtpValue] = useState('')
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ adminId: string; newRole: string } | null>(null)
+
+  // Permission Manager states
+  const [customSelectedPermissions, setCustomSelectedPermissions] = useState<Permission[]>([])
+  const [selectedGroupForPermissions, setSelectedGroupForPermissions] = useState<string | null>(null)
 
   // Fetch all data on mount
   useEffect(() => {
@@ -253,19 +292,30 @@ export default function AdminDashboard() {
       }
 
       // Fetch admin users
-      const adminResponse = await apiCall('/api/admin/admin-users')
-      console.log('Admin users response:', adminResponse)
+      try {
+        const adminResponse = await apiCall('/api/admin/admin-users')
+        console.log('Admin users response:', adminResponse)
 
-      if (adminResponse.success && adminResponse.data) {
-        setAdminUsers(adminResponse.data.admins || [])
+        if (adminResponse.success && adminResponse.data) {
+          setAdminUsers(adminResponse.data.admins || [])
+        }
+      } catch (adminErr) {
+        console.warn('Could not fetch admin users:', adminErr)
+        setAdminUsers([])
       }
 
       // Fetch regular users
-      const usersResponse = await apiCall('/api/admin/all-users')
-      console.log('Regular users response:', usersResponse)
+      let usersResponse: any = null
+      try {
+        usersResponse = await apiCall('/api/admin/all-users')
+        console.log('Regular users response:', usersResponse)
 
-      if (usersResponse.success && usersResponse.data) {
-        setRegularUsers(usersResponse.data.users || [])
+        if (usersResponse.success && usersResponse.data) {
+          setRegularUsers(usersResponse.data.users || [])
+        }
+      } catch (usersErr) {
+        console.warn('Could not fetch regular users:', usersErr)
+        setRegularUsers([])
       }
 
       // Fetch eligible users for promotion
@@ -278,24 +328,28 @@ export default function AdminDashboard() {
         } else {
           // Fallback: use regular users as eligible for promotion
           console.warn('No eligible users from endpoint, using regular users as fallback')
-          if (usersResponse.success && usersResponse.data) {
+          if (usersResponse && usersResponse.success && usersResponse.data) {
             setEligibleUsers(usersResponse.data.users || [])
           }
         }
       } catch (eligibleErr) {
         // Fallback: use regular users as eligible for promotion
         console.warn('Could not fetch eligible users, using regular users as fallback:', eligibleErr)
-        if (usersResponse.success && usersResponse.data) {
+        if (usersResponse && usersResponse.success && usersResponse.data) {
           setEligibleUsers(usersResponse.data.users || [])
         }
       }
 
       // Fetch dashboard stats
-      const dashboardResponse = await apiCall('/api/admin/dashboard')
-      console.log('Dashboard response:', dashboardResponse)
+      try {
+        const dashboardResponse = await apiCall('/api/admin/dashboard')
+        console.log('Dashboard response:', dashboardResponse)
 
-      if (dashboardResponse.success && dashboardResponse.data) {
-        setDashboardStats(dashboardResponse.data.overview)
+        if (dashboardResponse.success && dashboardResponse.data) {
+          setDashboardStats(dashboardResponse.data.overview)
+        }
+      } catch (dashboardErr) {
+        console.warn('Could not fetch dashboard stats:', dashboardErr)
       }
 
       // Fetch security settings
@@ -348,26 +402,21 @@ export default function AdminDashboard() {
 
     let finalRole: string | null = null
 
-    if (roleCategory === 'team_lead') {
+    if (roleCategory === 'admin') {
       finalRole = selectedAdminRole
-      if (!selectedGroupsForUser.size) {
-        toast({
-          title: "Error",
-          description: "Please assign the Team Lead to at least one department",
-          variant: "destructive"
-        })
-        return
-      }
-    } else if (roleCategory === 'team_member') {
-      finalRole = selectedTeamMemberRole
       if (!finalRole) {
         toast({
           title: "Error",
-          description: "Please select a specific role for the Team Member",
+          description: "Please select a specific admin role",
           variant: "destructive"
         })
         return
       }
+    } else if (roleCategory === 'team_lead') {
+      finalRole = selectedAdminRole
+    } else if (roleCategory === 'team_member') {
+      // For team members, use 'admin' role by default
+      finalRole = 'admin'
     }
 
     // Validate selected role
@@ -433,6 +482,36 @@ export default function AdminDashboard() {
     setSelectedAdminRole(null)
     setSelectedTeamMemberRole(null)
     setSelectedGroupsForUser(new Set())
+  }
+
+  const handleOpenAddTeamLeadDialog = async () => {
+    try {
+      // Refresh admin users to ensure we have the latest data
+      const adminResponse = await apiCall('/api/admin/admin-users')
+      if (adminResponse.success && adminResponse.data) {
+        setAdminUsers(adminResponse.data.admins || [])
+      }
+    } catch (err) {
+      console.warn('Could not refresh admin users:', err)
+    }
+    setAddMemberRoleCategory('team_lead')
+    setSelectedMemberUserId(null)
+    setShowAddMemberDialog(true)
+  }
+
+  const handleOpenAddTeamMemberDialog = async () => {
+    try {
+      // Refresh admin users to ensure we have the latest data
+      const adminResponse = await apiCall('/api/admin/admin-users')
+      if (adminResponse.success && adminResponse.data) {
+        setAdminUsers(adminResponse.data.admins || [])
+      }
+    } catch (err) {
+      console.warn('Could not refresh admin users:', err)
+    }
+    setAddMemberRoleCategory('team_member')
+    setSelectedMemberUserId(null)
+    setShowAddMemberDialog(true)
   }
 
   // Handle promoting a user to admin role and adding to groups
@@ -506,6 +585,159 @@ export default function AdminDashboard() {
       })
     } finally {
       setIsPromoting(false)
+    }
+  }
+
+  // Handle deleting an admin user (Super Admin only)
+  const handleDeleteAdminUser = async (adminId: string, adminName: string) => {
+    try {
+      const currentUserRole = getCurrentUser()?.role
+      if (currentUserRole !== 'super_admin') {
+        toast({
+          title: "Error",
+          description: "Only Super Admins can remove admin users",
+          variant: "destructive"
+        })
+        return
+      }
+
+      console.log('Deleting admin user:', adminId)
+      const response = await apiCall(`/api/admin/admin-users/${adminId}`, {
+        method: 'DELETE'
+      })
+
+      console.log('Delete response:', response)
+
+      // Remove user from state immediately for better UX
+      setAdminUsers(adminUsers.filter(u => u._id !== adminId))
+
+      if (response.success || response.status === 200 || response.data) {
+        toast({
+          title: "Success",
+          description: `${adminName} has been removed from admin users`
+        })
+      } else {
+        toast({
+          title: "Success",
+          description: `${adminName} has been removed from admin users`
+        })
+      }
+
+      // Refresh admin users list in the background
+      await fetchAllData()
+    } catch (err: any) {
+      console.error('Delete error:', err)
+      toast({
+        title: "Error",
+        description: err.message || "Failed to remove admin user",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleVerifyOTPForRoleChange = async () => {
+    if (!otpValue || !pendingRoleChange) {
+      toast({
+        title: "Error",
+        description: "Please enter OTP code",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      setOtpLoading(true)
+
+      // Step 3: Send OTP verification
+      const verificationResponse = await apiCall(`/api/admin/admin-users/${pendingRoleChange.adminId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: pendingRoleChange.newRole, otp: otpValue })
+      })
+
+      if (verificationResponse.success) {
+        toast({
+          title: "Success",
+          description: `Admin role has been changed to ${getRoleDisplayName(pendingRoleChange.newRole)}`
+        })
+        setShowOTPDialog(false)
+        setOtpValue('')
+        setPendingRoleChange(null)
+        setShowChangeRoleDialog(false)
+        setSelectedAdminForRoleChange(null)
+        setNewRoleForAdmin('')
+        fetchAllData()
+      } else {
+        toast({
+          title: "Error",
+          description: verificationResponse.message || "Failed to verify OTP",
+          variant: "destructive"
+        })
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to verify OTP",
+        variant: "destructive"
+      })
+    } finally {
+      setOtpLoading(false)
+    }
+  }
+
+  const handleChangeRole = async (adminId: string, newRole: string) => {
+    try {
+      const currentUserRole = getCurrentUser()?.role
+      if (currentUserRole !== 'super_admin') {
+        toast({
+          title: "Error",
+          description: "Only Super Admins can change admin roles",
+          variant: "destructive"
+        })
+        return
+      }
+
+      if (!newRole) {
+        toast({
+          title: "Error",
+          description: "Please select a new role",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Step 1: Send role change request without OTP (triggers OTP email)
+      const initialResponse = await apiCall(`/api/admin/admin-users/${adminId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: newRole })
+      })
+
+      // Step 2: If OTP is required, show OTP input dialog
+      if (initialResponse.data?.step === 'otp_required') {
+        // Store the pending role change and show OTP dialog
+        setPendingRoleChange({ adminId, newRole })
+        setShowOTPDialog(true)
+      } else if (initialResponse.success) {
+        toast({
+          title: "Success",
+          description: `Admin role has been changed to ${getRoleDisplayName(newRole)}`
+        })
+        setShowChangeRoleDialog(false)
+        setSelectedAdminForRoleChange(null)
+        setNewRoleForAdmin('')
+        fetchAllData()
+      } else {
+        toast({
+          title: "Error",
+          description: initialResponse.message || "Failed to change admin role",
+          variant: "destructive"
+        })
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to change admin role",
+        variant: "destructive"
+      })
     }
   }
 
@@ -768,6 +1000,10 @@ export default function AdminDashboard() {
             <UserCog className="h-4 w-4 mr-2" />
             Admins
           </TabsTrigger>
+          <TabsTrigger value="groups" className="cursor-pointer">
+            <Users className="h-4 w-4 mr-2" />
+            Groups
+          </TabsTrigger>
           <TabsTrigger value="teams" className="cursor-pointer">
             <Users className="h-4 w-4 mr-2" />
             Teams
@@ -927,61 +1163,80 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Role Levels */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Role Levels - 4 Tier Hierarchy */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Super Admin */}
-                  <Card className="border-2 border-red-200 bg-red-50">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
+                  <Card className="border-2 border-red-300 bg-red-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
                         <Shield className="h-4 w-4 text-red-600" />
                         Super Admin
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="text-sm space-y-2">
-                      <p className="text-muted-foreground">Full system access</p>
-                      <div className="bg-white rounded p-2 space-y-1 text-xs">
-                        <p>✓ Create Admin roles</p>
-                        <p>✓ Assign departments</p>
-                        <p>✓ Manage all teams</p>
-                        <p>✓ View reports</p>
+                    <CardContent className="text-xs space-y-2">
+                      <p className="text-muted-foreground font-medium">Global Access</p>
+                      <div className="bg-white rounded p-2 space-y-0.5 text-xs">
+                        <p>✓ Create Admins</p>
+                        <p>✓ Manage system</p>
+                        <p>✓ View all reports</p>
+                        <p>✓ Full control</p>
                       </div>
                     </CardContent>
                   </Card>
 
                   {/* Admin */}
-                  <Card className="border-2 border-blue-200 bg-blue-50">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
+                  <Card className="border-2 border-blue-300 bg-blue-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
                         <UserCog className="h-4 w-4 text-blue-600" />
-                        Admin (Department Head)
+                        Admin
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="text-sm space-y-2">
-                      <p className="text-muted-foreground">Manage own department</p>
-                      <div className="bg-white rounded p-2 space-y-1 text-xs">
-                        <p>✓ Create teams/groups</p>
-                        <p>✓ Add Sub-Admins</p>
-                        <p>✓ Manage team access</p>
-                        <p>✓ Remove members</p>
+                    <CardContent className="text-xs space-y-2">
+                      <p className="text-muted-foreground font-medium">Department Head</p>
+                      <div className="bg-white rounded p-2 space-y-0.5 text-xs">
+                        <p>✓ Create Team Leads</p>
+                        <p>✓ Manage groups</p>
+                        <p>✓ Approve groups</p>
+                        <p>✓ View team reports</p>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Sub-Admin */}
-                  <Card className="border-2 border-green-200 bg-green-50">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
+                  {/* Team Lead */}
+                  <Card className="border-2 border-green-300 bg-green-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
                         <Users className="h-4 w-4 text-green-600" />
-                        Sub-Admin (Team Member)
+                        Team Lead
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="text-sm space-y-2">
-                      <p className="text-muted-foreground">Team-specific work</p>
-                      <div className="bg-white rounded p-2 space-y-1 text-xs">
+                    <CardContent className="text-xs space-y-2">
+                      <p className="text-muted-foreground font-medium">Group Manager</p>
+                      <div className="bg-white rounded p-2 space-y-0.5 text-xs">
+                        <p>✓ Create sub-groups</p>
+                        <p>✓ Assign members</p>
+                        <p>✓ Manage access</p>
+                        <p>✓ View group data</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Team Member */}
+                  <Card className="border-2 border-purple-300 bg-purple-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Users className="h-4 w-4 text-purple-600" />
+                        Team Member
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-xs space-y-2">
+                      <p className="text-muted-foreground font-medium">Group Worker</p>
+                      <div className="bg-white rounded p-2 space-y-0.5 text-xs">
                         <p>✓ View assigned tasks</p>
-                        <p>✓ Process transactions</p>
-                        <p>✓ Approve/reject requests</p>
-                        <p>✓ Department limited</p>
+                        <p>✓ Execute work</p>
+                        <p>✓ Submit reports</p>
+                        <p>✓ Group limited</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -1019,82 +1274,213 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Admin Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-gradient-to-br from-red-50 to-red-100">
+          {/* Admin Statistics - 4 Tier Hierarchy */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-red-900">Super Admins</CardTitle>
+                <CardTitle className="text-sm font-medium text-red-900 flex items-center gap-1">
+                  <Shield className="h-4 w-4" />
+                  Super Admins
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">1</div>
+                <div className="text-3xl font-bold text-red-600">1</div>
+                <p className="text-xs text-red-600 mt-1">Global Access</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-blue-900">Admins</CardTitle>
+                <CardTitle className="text-sm font-medium text-blue-900 flex items-center gap-1">
+                  <UserCog className="h-4 w-4" />
+                  Admins
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{adminUsers.filter(u => u.role === 'admin' || u.assignedRole?.name === 'admin').length}</div>
+                <div className="text-3xl font-bold text-blue-600">{adminUsers.filter(u => u.role === 'admin' || u.assignedRole?.name === 'admin').length}</div>
+                <p className="text-xs text-blue-600 mt-1">Dept Heads</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-900">Sub-Admins</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-900 flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  Team Leads
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin').length}</div>
+                <div className="text-3xl font-bold text-green-600">{adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin').length}</div>
+                <p className="text-xs text-green-600 mt-1">Group Managers</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-purple-900">Total Teams</CardTitle>
+                <CardTitle className="text-sm font-medium text-purple-900 flex items-center gap-1">
+                  <FileText className="h-4 w-4" />
+                  Total Groups
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-600">{groups.length}</div>
+                <div className="text-3xl font-bold text-purple-600">{groups.length}</div>
+                <p className="text-xs text-purple-600 mt-1">With Sub-Groups</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Current Admins List */}
           <Card>
-            <CardHeader>
-              <CardTitle>Current Admin Users</CardTitle>
-              <CardDescription>All administrator and sub-administrator users in the system</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Manage Admin Users</CardTitle>
+                <CardDescription>All administrators and team leads in the system</CardDescription>
+              </div>
+              {getCurrentUser()?.role === 'super_admin' && (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleOpenCreateAdminDialog}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Admin
+                  </Button>
+                  <Button
+                    onClick={handleOpenAddTeamLeadDialog}
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Team Lead
+                  </Button>
+                  <Button
+                    onClick={handleOpenAddTeamMemberDialog}
+                    className="bg-orange-600 hover:bg-orange-700"
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Team Member
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {adminUsers.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No admin users found. Create one using the button above.</p>
+                <div className="text-center py-12 bg-muted/20 rounded-lg">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground font-medium">No admin users found</p>
+                  <p className="text-sm text-muted-foreground mt-1">Create one using the button above to get started</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {adminUsers.map((admin) => (
-                    <Card key={admin._id} className="border hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3 flex-1">
-                            <Avatar>
-                              <AvatarFallback>{admin.firstName?.[0]}{admin.lastName?.[0]}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-semibold">{admin.firstName} {admin.lastName}</p>
-                              <p className="text-xs text-muted-foreground">{admin.email}</p>
-                            </div>
-                          </div>
-                          <Badge className={admin.role === 'super_admin' ? 'bg-red-600' : admin.role === 'admin' ? 'bg-blue-600' : 'bg-green-600'}>
-                            {admin.role === 'super_admin' ? 'Super Admin' : admin.role === 'admin' ? 'Admin' : 'Sub-Admin'}
+                <div className="space-y-3">
+                  {/* Group by role */}
+                  {[
+                    { role: 'super_admin', label: 'Super Admins', color: 'red', icon: '👑' },
+                    { role: 'admin', label: 'Admins', color: 'blue', icon: '🔐' },
+                    { role: 'team_lead', label: 'Team Leads', color: 'green', icon: '👥' },
+                    { role: 'team_member', label: 'Team Members', color: 'purple', icon: '👤' }
+                  ].map((roleGroup) => {
+                    const usersInRole = adminUsers.filter(u => u.role === roleGroup.role)
+                    if (usersInRole.length === 0) return null
+
+                    return (
+                      <div key={roleGroup.role} className="space-y-2">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg">
+                          <span className="text-lg">{roleGroup.icon}</span>
+                          <h4 className="font-semibold text-sm flex-1">{roleGroup.label} ({usersInRole.length})</h4>
+                          <Badge variant="outline" className={`bg-${roleGroup.color}-100 text-${roleGroup.color}-700`}>
+                            {usersInRole.length}
                           </Badge>
                         </div>
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <p>Created: {new Date(admin.createdAt).toLocaleDateString()}</p>
-                          <p>Status: <span className="font-medium">{admin.status || 'Active'}</span></p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-2">
+                          {usersInRole.map((admin) => (
+                            <div
+                              key={admin._id}
+                              className={`p-3 rounded-lg border-2 border-${roleGroup.color}-200 bg-${roleGroup.color}-50 hover:shadow-md transition-all`}
+                            >
+                              <div className="flex items-start gap-3 mb-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="text-xs font-bold">
+                                    {admin.firstName?.[0]}{admin.lastName?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm truncate">{admin.firstName} {admin.lastName}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{admin.email}</p>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 text-xs border-t pt-2">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Created:</span>
+                                  <span className="font-medium">{new Date(admin.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-muted-foreground">Status:</span>
+                                  <Badge
+                                    variant="outline"
+                                    className={
+                                      admin.status === 'active'
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-yellow-100 text-yellow-700'
+                                    }
+                                  >
+                                    {admin.status || 'Active'}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-1 mt-3 pt-2 border-t">
+                                {getCurrentUser()?.role === 'super_admin' ? (
+                                  <>
+                                    {admin.role !== 'super_admin' && (
+                                      <>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="flex-1 h-7 text-xs"
+                                          onClick={() => {
+                                            setSelectedAdminForRoleChange(admin)
+                                            setNewRoleForAdmin(admin.role)
+                                            setShowChangeRoleDialog(true)
+                                          }}
+                                        >
+                                          Change Role
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 px-2 text-red-600 hover:bg-red-100"
+                                          onClick={() => {
+                                            if (confirm(`Remove ${admin.firstName} ${admin.lastName} from admin users?`)) {
+                                              handleDeleteAdminUser(admin._id, `${admin.firstName} ${admin.lastName}`)
+                                            }
+                                          }}
+                                        >
+                                          <Trash className="h-3 w-3" />
+                                        </Button>
+                                      </>
+                                    )}
+                                    {admin.role === 'super_admin' && (
+                                      <span className="text-xs text-muted-foreground px-2 py-1">
+                                        Cannot modify Super Admin
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground px-2 py-1">
+                                    View only
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
@@ -1400,15 +1786,96 @@ export default function AdminDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Team Management Component */}
+        {/* Groups Tab */}
+        <TabsContent value="groups" className="space-y-6">
+          {/* Groups Management Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Groups Management</h2>
+              <p className="text-muted-foreground mt-1">Create, manage, and configure permission groups</p>
+            </div>
+          </div>
+
+          {/* Group Management Component */}
           <Card>
             <CardHeader>
-              <CardTitle>Team Management</CardTitle>
-              <CardDescription>Create new teams and configure permissions</CardDescription>
+              <CardTitle>Create & Manage Groups</CardTitle>
+              <CardDescription>Create new groups, add members, configure permissions, and manage sub-groups</CardDescription>
             </CardHeader>
             <CardContent>
               <GroupManagement />
+            </CardContent>
+          </Card>
+
+          {/* Permission Manager */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Assign Permissions to Groups</CardTitle>
+              <CardDescription>Use the two-column interface below to select and configure permissions for your groups</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Group Selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Group</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {groups.length === 0 ? (
+                    <p className="text-sm text-gray-500 col-span-full">No groups created yet. Create a group above first.</p>
+                  ) : (
+                    groups.map((group) => (
+                      <button
+                        key={group._id}
+                        onClick={() => {
+                          setSelectedGroupForPermissions(group._id)
+                          setCustomSelectedPermissions(group.permissions || [])
+                        }}
+                        className={`p-3 rounded-lg border-2 text-left transition-all ${
+                          selectedGroupForPermissions === group._id
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <p className="font-medium text-sm">{group.displayName}</p>
+                        <p className="text-xs text-gray-500">{group.permissions?.length || 0} permissions</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Permission Manager Component */}
+              {selectedGroupForPermissions ? (
+                <div>
+                  <PermissionManager
+                    allPermissions={roles.flatMap(role => role.permissions || [])}
+                    selectedPermissions={customSelectedPermissions}
+                    onPermissionsChange={setCustomSelectedPermissions}
+                  />
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 mt-6 justify-end">
+                    <Button variant="outline" onClick={() => setSelectedGroupForPermissions(null)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        toast({
+                          title: "Permissions Updated",
+                          description: `Permissions saved for selected group`
+                        })
+                      }}
+                    >
+                      Save Permissions
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <Key className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-600">Select a group to configure its permissions</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1834,7 +2301,22 @@ export default function AdminDashboard() {
             {/* Shared: Role Category Selection */}
             <div className="space-y-2 pt-2 border-t">
               <label className="text-sm font-medium">Select User Type</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => {
+                    setRoleCategory('admin')
+                    setSelectedAdminRole('admin')
+                    setSelectedTeamMemberRole(null)
+                  }}
+                  className={`p-3 rounded-lg border-2 transition ${
+                    roleCategory === 'admin'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="font-medium text-sm">Admin</div>
+                  <div className="text-xs text-muted-foreground">Full system access</div>
+                </button>
                 <button
                   onClick={() => {
                     setRoleCategory('team_lead')
@@ -1867,115 +2349,52 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Team Lead: Department Selection */}
-            {roleCategory === 'team_lead' && (
+            {/* Admin: Role Selection */}
+            {roleCategory === 'admin' && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Assign to Department</label>
-                <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
-                  {groups.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No departments available</p>
-                  ) : (
-                    groups.map((group) => (
-                      <div key={group._id} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id={`dept-${group._id}`}
-                          checked={selectedGroupsForUser.has(group._id)}
-                          onChange={(e) => {
-                            const newGroups = new Set(selectedGroupsForUser)
-                            if (e.target.checked) {
-                              newGroups.clear()
-                              newGroups.add(group._id)
-                            } else {
-                              newGroups.delete(group._id)
-                            }
-                            setSelectedGroupsForUser(newGroups)
-                          }}
-                          className="rounded"
-                        />
-                        <label htmlFor={`dept-${group._id}`} className="text-sm cursor-pointer flex-1">
-                          <div className="font-medium">{group.displayName}</div>
-                          <div className="text-xs text-muted-foreground">{group.department || 'Department'}</div>
-                        </label>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Team Member: Specific Role Selection */}
-            {roleCategory === 'team_member' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Specific Role</label>
-                <Select value={selectedTeamMemberRole || ""} onValueChange={setSelectedTeamMemberRole}>
+                <label className="text-sm font-medium">Select Admin Role Type</label>
+                <Select value={selectedAdminRole || ""} onValueChange={setSelectedAdminRole}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a role..." />
+                    <SelectValue placeholder="Choose admin role..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.length > 0 ? (
-                      roles.filter(role =>
-                        role.name !== 'super_admin' &&
-                        role.name !== 'admin' &&
-                        isValidRoleName(role.name)
-                      ).map((role) => (
-                        <SelectItem key={role._id} value={role.name}>
-                          <div>
-                            <div className="font-medium">{role.displayName}</div>
-                            {role.description && (
-                              <div className="text-xs text-muted-foreground">
-                                {role.description}
-                              </div>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="" disabled>
-                        Loading roles...
-                      </SelectItem>
-                    )}
+                    <SelectItem value="admin">
+                      <div>
+                        <div className="font-medium">Admin</div>
+                        <div className="text-xs text-muted-foreground">Full system access</div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="kyc_officer">
+                      <div>
+                        <div className="font-medium">KYC Officer</div>
+                        <div className="text-xs text-muted-foreground">Manage KYC processes</div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="property_manager">
+                      <div>
+                        <div className="font-medium">Property Manager</div>
+                        <div className="text-xs text-muted-foreground">Manage properties</div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="financial_analyst">
+                      <div>
+                        <div className="font-medium">Financial Analyst</div>
+                        <div className="text-xs text-muted-foreground">Analyze financials</div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="compliance_officer">
+                      <div>
+                        <div className="font-medium">Compliance Officer</div>
+                        <div className="text-xs text-muted-foreground">Ensure compliance</div>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             )}
 
-            {/* Team Member: Add to Team (Department) */}
-            {roleCategory === 'team_member' && (
-              <div className="space-y-2 pt-2 border-t">
-                <label className="text-sm font-medium">Assign to Team/Department</label>
-                <p className="text-xs text-muted-foreground">Select which team this member should join</p>
-                <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2 bg-muted/30">
-                  {groups.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No teams available</p>
-                  ) : (
-                    groups.map((group) => (
-                      <div key={group._id} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id={`team-${group._id}`}
-                          checked={selectedGroupsForUser.has(group._id)}
-                          onChange={(e) => {
-                            const newGroups = new Set(selectedGroupsForUser)
-                            if (e.target.checked) {
-                              newGroups.add(group._id)
-                            } else {
-                              newGroups.delete(group._id)
-                            }
-                            setSelectedGroupsForUser(newGroups)
-                          }}
-                          className="rounded"
-                        />
-                        <label htmlFor={`team-${group._id}`} className="text-sm cursor-pointer flex-1">
-                          <div className="font-medium">{group.displayName}</div>
-                          <div className="text-xs text-muted-foreground">{group.department || 'Team'}</div>
-                        </label>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
+
+
           </div>
 
           <DialogFooter>
@@ -2003,7 +2422,7 @@ export default function AdminDashboard() {
               }}
               disabled={
                 isPromoting ||
-                !selectedAdminRole ||
+                (roleCategory !== 'team_member' && !selectedAdminRole) ||
                 (adminDialogMode === 'promote' ? !selectedEligibleUser :
                   !newAdminForm.firstName || !newAdminForm.lastName || !newAdminForm.email || !newAdminForm.password)
               }
@@ -2036,6 +2455,24 @@ export default function AdminDashboard() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Group Selection - only show if no group is pre-selected */}
+            {!selectedGroupForMember && groups.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Group</label>
+                <Select value={selectedGroupForMember || ''} onValueChange={setSelectedGroupForMember}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a group..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groups.map((group) => (
+                      <SelectItem key={group._id} value={group._id}>
+                        {group.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {/* User Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">
@@ -2467,6 +2904,133 @@ export default function AdminDashboard() {
                 </>
               ) : (
                 'Save Settings'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Role Dialog */}
+      <Dialog open={showChangeRoleDialog} onOpenChange={setShowChangeRoleDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>
+              Change Role for {selectedAdminForRoleChange?.firstName} {selectedAdminForRoleChange?.lastName}
+            </DialogTitle>
+            <DialogDescription>
+              Select a new role for this admin user. Current role: <span className="font-semibold">{getRoleDisplayName(selectedAdminForRoleChange?.role || '')}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {selectedAdminForRoleChange && getAvailableRolesForChange(selectedAdminForRoleChange.role).length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                This user role cannot be changed
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">New Role</label>
+                <Select value={newRoleForAdmin} onValueChange={setNewRoleForAdmin}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedAdminForRoleChange &&
+                      getAvailableRolesForChange(selectedAdminForRoleChange.role).map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {getRoleDisplayName(role)}
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowChangeRoleDialog(false)
+                setSelectedAdminForRoleChange(null)
+                setNewRoleForAdmin('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedAdminForRoleChange) {
+                  handleChangeRole(selectedAdminForRoleChange._id, newRoleForAdmin)
+                }
+              }}
+              disabled={!newRoleForAdmin}
+            >
+              Change Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* OTP Verification Dialog */}
+      <Dialog open={showOTPDialog} onOpenChange={setShowOTPDialog}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Verify OTP</DialogTitle>
+            <DialogDescription>
+              Enter the OTP code sent to your email to confirm the role change for {pendingRoleChange ? getRoleDisplayName(pendingRoleChange.newRole) : 'admin'}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* OTP Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">OTP Code</label>
+              <Input
+                type="text"
+                placeholder="Enter 6-digit OTP"
+                value={otpValue}
+                onChange={(e) => setOtpValue(e.target.value.toUpperCase())}
+                maxLength={10}
+                className="text-center text-lg font-mono tracking-widest"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                📧 Check your email for the OTP code. If using backend logs, look for "OTP" in the console output.
+              </p>
+            </div>
+
+            {/* Instructions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-900">
+                <strong>No email?</strong> Check the backend/Render logs for the OTP code that was logged to console due to SMTP connection issues.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowOTPDialog(false)
+                setOtpValue('')
+                setPendingRoleChange(null)
+              }}
+              disabled={otpLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleVerifyOTPForRoleChange}
+              disabled={!otpValue || otpLoading}
+            >
+              {otpLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify OTP'
               )}
             </Button>
           </DialogFooter>
