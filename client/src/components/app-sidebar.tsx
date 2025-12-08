@@ -8,7 +8,8 @@ import {
   Home,
   Shield,
   Settings,
-  CheckSquare
+  CheckSquare,
+  DollarSign
 } from "lucide-react"
 import { Link, useLocation } from "wouter"
 
@@ -60,6 +61,11 @@ const items = [
     title: "Notifications",
     url: "/notifications",
     icon: Bell,
+  },
+  {
+    title: "Withdrawal Requests",
+    url: "/withdrawal-requests",
+    icon: DollarSign,
   }
 ]
 

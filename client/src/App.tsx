@@ -23,6 +23,7 @@ import Admin from "@/pages/admin";
 import AdminRegistration from "@/pages/admin-registration";
 import AdminVerifyOTP from "@/pages/admin-verify-otp";
 import SuperAdminApprovals from "@/pages/super-admin-approvals";
+import WithdrawalRequests from "@/pages/withdrawal-requests";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -43,6 +44,7 @@ function AdminRouter() {
       <Route path="/documents" component={Documents} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/notifications" component={Notifications} />
+      <Route path="/withdrawal-requests" component={WithdrawalRequests} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin/register" component={AdminRegistration} />
       <Route path="/admin/verify-otp" component={AdminVerifyOTP} />

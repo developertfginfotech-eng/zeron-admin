@@ -47,7 +47,13 @@ export const API_ENDPOINTS = {
 
     // Reports
     EARNINGS_REPORT: '/api/admin/reports/earnings',
-    DASHBOARD: '/api/admin/dashboard'
+    DASHBOARD: '/api/admin/dashboard',
+
+    // Withdrawal requests
+    LIST_WITHDRAWALS: '/api/admin/withdrawal-requests',
+    GET_WITHDRAWAL: (id: string) => `/api/admin/withdrawal-requests/${id}`,
+    APPROVE_WITHDRAWAL: (id: string) => `/api/admin/withdrawal-requests/${id}/approve`,
+    REJECT_WITHDRAWAL: (id: string) => `/api/admin/withdrawal-requests/${id}/reject`
   },
   
   // Public property endpoints
