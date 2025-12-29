@@ -1895,69 +1895,177 @@ export default function GroupManagement() {
         {/* PERMISSIONS TAB */}
         {activeTab === "permissions" && (
         <div className="space-y-6">
+          {/* User Role and Info Card */}
+          <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Your Permissions</h2>
+                <p className="text-blue-100">View your role and assigned permissions</p>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                <p className="text-xs text-blue-100 mb-1">Your Role</p>
+                <p className="text-xl font-bold">{userRole?.replace(/_/g, ' ').toUpperCase()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* User's Groups and Permissions */}
           <Card>
             <CardHeader>
-              <CardTitle>Essential Permission Resources</CardTitle>
-              <CardDescription>Core permissions for managing groups, users, and system access</CardDescription>
+              <CardTitle>Your Group Memberships & Permissions</CardTitle>
+              <CardDescription>Groups you belong to and the permissions you have through them</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {PERMISSION_RESOURCES.map((category) => (
-                  <Card key={category.category} className="p-4 border-2 border-blue-100 dark:border-blue-900 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-                    <h3 className="font-semibold text-sm mb-3 text-blue-700 dark:text-blue-300">
-                      {category.category}
-                    </h3>
-                    <div className="space-y-2">
-                      {category.resources.map((resource) => (
-                        <div key={resource} className="text-xs">
-                          <p className="font-medium text-slate-800 dark:text-slate-200 mb-1">{resource}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {ACTIONS.map((action) => (
-                              <Badge key={action} variant="outline" className="text-xs bg-white dark:bg-slate-800">
-                                {action}
-                              </Badge>
+              {groups.length > 0 ? (
+                <div className="space-y-4">
+                  {groups.flatMap((group) => {
+                    const userGroups = []
+
+                    // Check if user is in parent group
+                    if (isUserMemberOfGroup(group)) {
+                      userGroups.push(group)
+                    }
+
+                    // Check if user is in any subgroups
+                    if (group.subGroups) {
+                      group.subGroups.forEach((subgroup) => {
+                        if (isUserMemberOfGroup(subgroup)) {
+                          userGroups.push(subgroup)
+                        }
+                      })
+                    }
+
+                    return userGroups
+                  }).map((userGroup) => (
+                    <Card key={userGroup._id} className="border-2 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Crown className="h-5 w-5 text-green-600" />
+                            <div>
+                              <CardTitle className="text-lg">{userGroup.displayName}</CardTitle>
+                              <CardDescription className="text-sm mt-1">
+                                {userGroup.parentGroupId ? (
+                                  <Badge variant="secondary" className="text-xs">Sub-group</Badge>
+                                ) : (
+                                  <Badge className="text-xs">{userGroup.department}</Badge>
+                                )}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <Badge className="bg-green-600 text-white">
+                            {userGroup.permissions?.length || 0} Permissions
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {userGroup.permissions && userGroup.permissions.length > 0 ? (
+                          <div className="space-y-3">
+                            {userGroup.permissions.map((perm, idx) => (
+                              <div key={idx} className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-green-200 dark:border-green-800">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="font-semibold text-sm text-green-700 dark:text-green-300">
+                                    {perm.resource}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {perm.actions.map((action) => (
+                                    <Badge key={action} variant="outline" className="text-xs bg-green-100 dark:bg-green-950 border-green-300 dark:border-green-700">
+                                      ✓ {action}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
-                        </div>
-                      ))}
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">No permissions assigned to this group</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  {groups.flatMap((group) => {
+                    const userGroups = []
+                    if (isUserMemberOfGroup(group)) userGroups.push(group)
+                    if (group.subGroups) {
+                      group.subGroups.forEach((subgroup) => {
+                        if (isUserMemberOfGroup(subgroup)) userGroups.push(subgroup)
+                      })
+                    }
+                    return userGroups
+                  }).length === 0 && (
+                    <div className="text-center py-12">
+                      <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground font-semibold">No Group Memberships</p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        You are not assigned to any groups yet. Contact your administrator to be added to a group.
+                      </p>
                     </div>
-                  </Card>
-                ))}
-              </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No groups available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Permissions Info */}
+          {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total Resources</CardTitle>
+                <CardTitle className="text-sm">Your Groups</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-blue-600">{PERMISSION_RESOURCES.reduce((sum, cat) => sum + cat.resources.length, 0)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Essential permission types</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {groups.flatMap((group) => {
+                    const userGroups = []
+                    if (isUserMemberOfGroup(group)) userGroups.push(group)
+                    if (group.subGroups) {
+                      group.subGroups.forEach((subgroup) => {
+                        if (isUserMemberOfGroup(subgroup)) userGroups.push(subgroup)
+                      })
+                    }
+                    return userGroups
+                  }).length}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Groups you belong to</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total Actions</CardTitle>
+                <CardTitle className="text-sm">Total Permissions</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-indigo-600">{ACTIONS.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">Core action types</p>
+                <p className="text-2xl font-bold text-indigo-600">
+                  {groups.flatMap((group) => {
+                    const userGroups = []
+                    if (isUserMemberOfGroup(group)) userGroups.push(group)
+                    if (group.subGroups) {
+                      group.subGroups.forEach((subgroup) => {
+                        if (isUserMemberOfGroup(subgroup)) userGroups.push(subgroup)
+                      })
+                    }
+                    return userGroups
+                  }).reduce((sum, g) => sum + (g.permissions?.length || 0), 0)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Permission resources assigned</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Combinations</CardTitle>
+                <CardTitle className="text-sm">Your Role Level</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-purple-600">
-                  {(PERMISSION_RESOURCES.reduce((sum, cat) => sum + cat.resources.length, 0) * ACTIONS.length).toLocaleString()}
+                  {userRole === 'super_admin' ? 'Full Access' : userRole === 'admin' ? 'Admin' : userRole === 'team_lead' ? 'Lead' : 'Member'}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Possible permissions</p>
+                <p className="text-xs text-muted-foreground mt-1">Access level</p>
               </CardContent>
             </Card>
           </div>
