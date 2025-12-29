@@ -163,6 +163,7 @@ export default function GroupManagement() {
     description: "",
     department: "other",
   })
+  const [selectedSubgroupTeamLead, setSelectedSubgroupTeamLead] = useState<string>("")
 
   // Sub-group Management States
   const [editingSubgroupId, setEditingSubgroupId] = useState<string | null>(null)
@@ -499,6 +500,7 @@ export default function GroupManagement() {
           department: subgroupFormData.department || parentGroup?.department,
           parentGroupId: selectedParentForSubgroup,
           permissions: parentGroup?.permissions || [],
+          ...(selectedSubgroupTeamLead && { teamLeadId: selectedSubgroupTeamLead }),
         }),
       })
 
@@ -510,6 +512,7 @@ export default function GroupManagement() {
         setShowSubgroupForm(false)
         setSelectedParentForSubgroup(null)
         setSubgroupFormData({ displayName: "", description: "", department: "other" })
+        setSelectedSubgroupTeamLead("")
         fetchData()
       }
     } catch (err: any) {
@@ -1198,6 +1201,41 @@ export default function GroupManagement() {
                     className="border-2 focus:border-blue-500"
                     disabled={!selectedParentForSubgroup}
                   />
+                </div>
+
+                {/* Assign Team Lead */}
+                <div className="p-4 bg-green-50 dark:bg-green-950 border-2 border-green-200 dark:border-green-800 rounded-lg">
+                  <Label htmlFor="subgroupTeamLead" className="text-sm font-semibold mb-2 block">
+                    Assign Team Lead <span className="text-slate-400">(Optional)</span>
+                  </Label>
+                  <select
+                    id="subgroupTeamLead"
+                    value={selectedSubgroupTeamLead}
+                    onChange={(e) => setSelectedSubgroupTeamLead(e.target.value)}
+                    className="w-full px-4 py-2.5 border-2 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:border-green-500 focus:outline-none bg-white dark:bg-slate-900"
+                    disabled={!selectedParentForSubgroup}
+                  >
+                    <option value="">No team lead assigned - Assign later</option>
+                    {users
+                      .filter((u: any) => u.role === 'team_lead' && u.status === 'active')
+                      .map((user) => (
+                        <option key={user._id} value={user._id}>
+                          {user.firstName} {user.lastName} ({user.email})
+                        </option>
+                      ))}
+                  </select>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-2">
+                    💡 The team lead will manage this sub-group and can add team members
+                  </p>
+                  {selectedSubgroupTeamLead && (
+                    <div className="mt-3 p-3 bg-white dark:bg-slate-900 border-l-4 border-green-600 rounded">
+                      <p className="text-sm text-green-800 dark:text-green-200">
+                        <span className="font-semibold">✓ Team Lead Selected:</span>{" "}
+                        {users.find((u: any) => u._id === selectedSubgroupTeamLead)?.firstName}{" "}
+                        {users.find((u: any) => u._id === selectedSubgroupTeamLead)?.lastName} will head this sub-group
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <Button
