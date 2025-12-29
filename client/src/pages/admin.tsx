@@ -1794,7 +1794,8 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {groups.map((group) => {
+                  {/* Only show parent groups (not subgroups) */}
+                  {groups.filter((g) => !g.parentGroupId).map((group) => {
                     // Find admin users who belong to this group (team leads)
                     // Filter by checking if they're in the group's members array
                     // Note: members.userId is populated with user objects from backend
@@ -1812,8 +1813,13 @@ export default function AdminDashboard() {
                     const teamLead = adminUsers.find(u => u.role === 'admin' && groupMemberIds.includes(u._id?.toString() || u._id))
                     const teamMembers = adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin' && groupMemberIds.includes(u._id?.toString() || u._id))
 
+                    // Get subgroups for this parent group
+                    const subgroups = groups.filter((sg) => sg.parentGroupId === group._id)
+
                     return (
-                      <Card key={group._id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+                      <div key={group._id} className="space-y-2">
+                        {/* Parent Group Card */}
+                        <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
                         <div className="p-4">
                           {/* Team Header */}
                           <div className="flex items-start justify-between mb-4">
@@ -1928,6 +1934,146 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       </Card>
+
+                      {/* Subgroups - Nested with indentation */}
+                      {subgroups.length > 0 && (
+                        <div className="ml-8 space-y-2">
+                          {subgroups.map((subgroup) => {
+                            const subgroupMemberIds = subgroup.members?.map((m: any) => {
+                              if (m.userId && typeof m.userId === 'object' && m.userId._id) {
+                                return m.userId._id.toString()
+                              }
+                              return typeof m === 'string' ? m : (m._id || m.userId)
+                            }) || []
+
+                            const subgroupTeamLead = adminUsers.find(u => u.role === 'admin' && subgroupMemberIds.includes(u._id?.toString() || u._id))
+                            const subgroupTeamMembers = adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin' && subgroupMemberIds.includes(u._id?.toString() || u._id))
+
+                            return (
+                              <Card key={subgroup._id} className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow bg-purple-50/50 dark:bg-purple-950/20">
+                                <div className="p-4">
+                                  {/* Subgroup Header */}
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-purple-500 font-bold">└─</span>
+                                        <h3 className="text-lg font-semibold">{subgroup.displayName}</h3>
+                                        <Badge variant="secondary" className="text-xs">Sub-group</Badge>
+                                      </div>
+                                      <p className="text-sm text-muted-foreground ml-5">{subgroup.description || 'No description'}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge className="bg-purple-600">{subgroupTeamMembers.length} Members</Badge>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        className="h-8 text-xs"
+                                        onClick={() => handleDeleteGroup(subgroup._id)}
+                                      >
+                                        <Trash className="h-3 w-3 mr-1" />
+                                        Delete
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  {/* Subgroup Team Lead Section */}
+                                  {subgroupTeamLead && (
+                                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg ml-5">
+                                      <p className="text-xs font-semibold text-green-900 mb-2">👨‍💼 Team Lead</p>
+                                      <div className="flex items-center gap-3">
+                                        <Avatar>
+                                          <AvatarFallback>
+                                            {subgroupTeamLead.firstName?.[0]}{subgroupTeamLead.lastName?.[0]}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-semibold text-sm">{subgroupTeamLead.firstName} {subgroupTeamLead.lastName}</p>
+                                          <p className="text-xs text-muted-foreground">{subgroupTeamLead.email}</p>
+                                        </div>
+                                        <Badge className="bg-green-600 text-xs">Admin</Badge>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Subgroup Team Members Section */}
+                                  <div className="ml-5">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-sm font-semibold flex items-center gap-2">
+                                        👥 Team Members ({subgroupTeamMembers.length})
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          size="sm"
+                                          className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                                          onClick={() => {
+                                            setSelectedGroupForMember(subgroup._id)
+                                            setAddMemberRoleCategory('team_lead')
+                                            setSelectedMemberUserId(null)
+                                            setShowAddMemberDialog(true)
+                                          }}
+                                        >
+                                          <Plus className="h-3 w-3 mr-1" />
+                                          Add Team Lead
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          className="h-7 text-xs bg-purple-600 hover:bg-purple-700"
+                                          onClick={() => {
+                                            setSelectedGroupForMember(subgroup._id)
+                                            setAddMemberRoleCategory('team_member')
+                                            setSelectedMemberUserId(null)
+                                            setShowAddMemberDialog(true)
+                                          }}
+                                        >
+                                          <Plus className="h-3 w-3 mr-1" />
+                                          Add Team Member
+                                        </Button>
+                                      </div>
+                                    </div>
+
+                                    {subgroupTeamMembers.length === 0 ? (
+                                      <div className="text-center py-4 bg-gray-50 rounded border border-dashed border-gray-300">
+                                        <p className="text-xs text-muted-foreground">No team members yet</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Click "Add Member" to add sub-admins to this sub-group</p>
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {subgroupTeamMembers.map((member) => (
+                                          <div key={member._id} className="flex items-center justify-between p-2 bg-purple-50 rounded border border-purple-200">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                              <Avatar className="h-8 w-8">
+                                                <AvatarFallback className="text-xs">
+                                                  {member.firstName?.[0]}{member.lastName?.[0]}
+                                                </AvatarFallback>
+                                              </Avatar>
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium">{member.firstName} {member.lastName}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Badge className="bg-purple-600 text-xs">Sub-Admin</Badge>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 w-6 p-0"
+                                                onClick={() => alert('Remove member functionality coming soon')}
+                                              >
+                                                <Trash className="h-3 w-3 text-red-600" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </Card>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                     )
                   })}
                 </div>
