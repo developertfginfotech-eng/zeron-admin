@@ -147,6 +147,7 @@ export default function GroupManagement() {
     parentGroupId: "",
   })
   const [selectedPermissions, setSelectedPermissions] = useState<Array<{ resource: string; actions: string[] }>>([])
+  const [selectedGroupAdmin, setSelectedGroupAdmin] = useState<string>("")
 
   // Team Management States
   const [selectedGroup, setSelectedGroup] = useState<GroupData | null>(null)
@@ -273,6 +274,7 @@ export default function GroupManagement() {
           department: createFormData.department,
           permissions: selectedPermissions,
           ...(createFormData.parentGroupId && { parentGroupId: createFormData.parentGroupId }),
+          ...(selectedGroupAdmin && { groupAdminId: selectedGroupAdmin }),
         }),
       })
 
@@ -289,6 +291,7 @@ export default function GroupManagement() {
           parentGroupId: "",
         })
         setSelectedPermissions([])
+        setSelectedGroupAdmin("")
         fetchData()
       }
     } catch (err: any) {
@@ -998,11 +1001,59 @@ export default function GroupManagement() {
               </CardContent>
             </Card>
 
+            {/* Assign Group Admin Card */}
+            {!createFormData.parentGroupId && (
+              <Card className="border-2 border-green-100 dark:border-green-900">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 rounded-t-lg">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center text-sm font-bold">3</div>
+                    Assign Group Admin
+                  </CardTitle>
+                  <CardDescription>Select an admin who will manage this group and create sub-groups</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div>
+                    <Label htmlFor="groupAdmin" className="text-sm font-semibold mb-2 block">
+                      Group Admin <span className="text-slate-400">(Optional)</span>
+                    </Label>
+                    <select
+                      id="groupAdmin"
+                      value={selectedGroupAdmin}
+                      onChange={(e) => setSelectedGroupAdmin(e.target.value)}
+                      className="w-full px-4 py-2.5 border-2 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:border-green-500 focus:outline-none bg-white dark:bg-slate-900"
+                    >
+                      <option value="">No admin assigned - You can assign later</option>
+                      {users
+                        .filter((u: any) => u.role === 'admin' && u.status === 'active')
+                        .map((user) => (
+                          <option key={user._id} value={user._id}>
+                            {user.firstName} {user.lastName} ({user.email})
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      💡 The assigned admin will have full control over this group and can create sub-groups
+                    </p>
+                  </div>
+
+                  {selectedGroupAdmin && (
+                    <div className="mt-4 p-4 bg-green-50 dark:bg-green-950 border-l-4 border-green-600 rounded">
+                      <p className="text-sm text-green-800 dark:text-green-200">
+                        <span className="font-semibold">✓ Group Admin Selected:</span>{" "}
+                        {users.find((u: any) => u._id === selectedGroupAdmin)?.firstName}{" "}
+                        {users.find((u: any) => u._id === selectedGroupAdmin)?.lastName} will manage this group
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Permissions Card */}
             <Card className="border-2 border-indigo-100 dark:border-indigo-900">
               <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-t-lg">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold">3</div>
+                  <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold">{!createFormData.parentGroupId ? '4' : '3'}</div>
                   Assign Permissions
                 </CardTitle>
                 <CardDescription>Select which resources and actions this group can access</CardDescription>
@@ -1050,6 +1101,7 @@ export default function GroupManagement() {
                     parentGroupId: "",
                   })
                   setSelectedPermissions([])
+                  setSelectedGroupAdmin("")
                 }}
                 className="gap-2 font-semibold px-6 py-2.5 h-auto"
               >

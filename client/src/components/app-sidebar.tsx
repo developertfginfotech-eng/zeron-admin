@@ -81,6 +81,11 @@ const adminItems = [
     icon: Shield,
   },
   {
+    title: "Group Management",
+    url: "/admin/groups",
+    icon: UserCheck,
+  },
+  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
