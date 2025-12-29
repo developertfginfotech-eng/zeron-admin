@@ -12,8 +12,12 @@ import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Search, Filter, Eye, FileText, Download, AlertCircle, CheckCircle, XCircle, Clock, TrendingUp, Building, MapPin, User, Loader2, Sparkles } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function EnhancedKYCDashboard() {
+  // Permission hook
+  const { hasPermission, hasAnyPermission } = usePermissions();
+
   // State management
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -23,7 +27,7 @@ export default function EnhancedKYCDashboard() {
   const [isDocumentViewModalOpen, setIsDocumentViewModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [remarkText, setRemarkText] = useState("");
-  
+
   // API data state
   const [kycApplications, setKycApplications] = useState([]);
   const [statistics, setStatistics] = useState({
@@ -811,16 +815,18 @@ export default function EnhancedKYCDashboard() {
                     </Card>
                   )}
 
-                  {/* Action Buttons */}
+                  {/* Action Buttons - Only show if user has permission */}
                   <div className="flex justify-end gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => handleUpdateKYCStatus(selectedApplicant.id, 'rejected', 'Documents need revision')}
-                      disabled={updating}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Reject
-                    </Button>
+                    {(hasPermission('kyc:approval', 'reject') || hasPermission('kyc:verification', 'reject')) && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleUpdateKYCStatus(selectedApplicant.id, 'rejected', 'Documents need revision')}
+                        disabled={updating}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Reject
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       onClick={() => handleAddRemark(selectedApplicant)}
@@ -829,13 +835,25 @@ export default function EnhancedKYCDashboard() {
                       <FileText className="h-4 w-4 mr-2" />
                       Add Notes
                     </Button>
-                    <Button
-                      onClick={() => handleUpdateKYCStatus(selectedApplicant.id, 'approved')}
-                      disabled={updating}
-                    >
-                      {updating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                      Approve
-                    </Button>
+                    {(hasPermission('kyc:approval', 'approve') || hasPermission('kyc:verification', 'approve')) && (
+                      <Button
+                        onClick={() => handleUpdateKYCStatus(selectedApplicant.id, 'approved')}
+                        disabled={updating}
+                      >
+                        {updating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                        Approve
+                      </Button>
+                    )}
+                    {!hasAnyPermission([
+                      { resource: 'kyc:approval', action: 'approve' },
+                      { resource: 'kyc:approval', action: 'reject' },
+                      { resource: 'kyc:verification', action: 'approve' },
+                      { resource: 'kyc:verification', action: 'reject' }
+                    ]) && (
+                      <p className="text-sm text-muted-foreground">
+                        You don't have permission to approve or reject KYC applications
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
