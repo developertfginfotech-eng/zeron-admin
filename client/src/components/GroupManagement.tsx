@@ -1755,7 +1755,7 @@ export default function GroupManagement() {
                 {selectedGroup && (
                   <>
                     <div>
-                      <Label htmlFor="userSelectMember">Select Sub-Admin User</Label>
+                      <Label htmlFor="userSelectMember">Select Team Member</Label>
                       <select
                         id="userSelectMember"
                         value={selectedUserForGroup || ""}
@@ -1764,7 +1764,7 @@ export default function GroupManagement() {
                       >
                         <option value="">Choose a user...</option>
                         {users
-                          .filter((u: any) => u.role !== 'super_admin' && u.role !== 'admin' && u.status === 'active')
+                          .filter((u: any) => u.role === 'team_member' && u.status === 'active')
                           .map((user) => (
                             <option key={user._id} value={user._id}>
                               {user.firstName} {user.lastName} ({user.email})
