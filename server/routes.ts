@@ -99,6 +99,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     proxyToBackend(req, res, "POST", "/api/admin/admin-users")
   );
 
+  // OTP endpoints for admin creation
+  app.post("/api/admin/admin-users/request-otp", (req, res) =>
+    proxyToBackend(req, res, "POST", "/api/admin/admin-users/request-otp")
+  );
+
+  app.post("/api/admin/admin-users/verify-otp", (req, res) =>
+    proxyToBackend(req, res, "POST", "/api/admin/admin-users/verify-otp")
+  );
+
+  // OTP endpoints for role change
+  app.post("/api/admin/admin-users/request-role-change-otp", (req, res) =>
+    proxyToBackend(req, res, "POST", "/api/admin/admin-users/request-role-change-otp")
+  );
+
+  app.post("/api/admin/admin-users/verify-role-change-otp", (req, res) =>
+    proxyToBackend(req, res, "POST", "/api/admin/admin-users/verify-role-change-otp")
+  );
+
   app.get("/api/admin/admin-users/pending/list", (req, res) =>
     proxyToBackend(req, res, "GET", "/api/admin/admin-users/pending/list")
   );

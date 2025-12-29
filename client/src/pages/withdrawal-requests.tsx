@@ -212,85 +212,147 @@ export default function WithdrawalRequests() {
     }
   }
 
+  // Calculate statistics
+  const stats = {
+    pending: withdrawalRequests.filter(r => r.status === 'pending').length,
+    approved: withdrawalRequests.filter(r => r.status === 'approved').length,
+    completed: withdrawalRequests.filter(r => r.status === 'completed').length,
+    rejected: withdrawalRequests.filter(r => r.status === 'rejected').length,
+    totalAmount: withdrawalRequests.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.amount, 0)
+  }
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Withdrawal Requests</h1>
-        <p className="text-gray-600 mt-1">Manage and approve property investment withdrawals</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Header with Gradient Background */}
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">Withdrawal Requests</h1>
+            <p className="text-blue-100">Manage and approve property investment withdrawals</p>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm font-medium">Pending Requests</p>
+              <p className="text-3xl font-bold mt-1">{stats.pending}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm font-medium">Approved</p>
+              <p className="text-3xl font-bold mt-1">{stats.approved}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm font-medium">Completed</p>
+              <p className="text-3xl font-bold mt-1">{stats.completed}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm font-medium">Rejected</p>
+              <p className="text-3xl font-bold mt-1">{stats.rejected}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm font-medium">Pending Amount</p>
+              <p className="text-2xl font-bold mt-1">SAR {(stats.totalAmount / 1000).toFixed(0)}K</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs for different statuses */}
-      <Tabs value={statusFilter} onValueChange={(val) => {
-        setStatusFilter(val)
-        setSearchQuery('')
-      }}>
-        <TabsList>
-          <TabsTrigger value="pending">
-            Pending
-            <Badge variant="outline" className="ml-2">
-              {withdrawalRequests.filter(r => r.status === 'pending').length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
-        </TabsList>
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Tabs for different statuses */}
+        <Tabs value={statusFilter} onValueChange={(val) => {
+          setStatusFilter(val)
+          setSearchQuery('')
+        }} className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <TabsList className="bg-gray-100 p-1 grid w-full grid-cols-4">
+              <TabsTrigger value="pending" className="relative">
+                Pending
+                {stats.pending > 0 && (
+                  <Badge className="ml-2 bg-red-500 hover:bg-red-600">
+                    {stats.pending}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="approved">Approved</TabsTrigger>
+              <TabsTrigger value="completed">Completed</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected</TabsTrigger>
+            </TabsList>
 
-        {/* Search Bar */}
-        <div className="mt-6 flex gap-4">
-          <Input
-            placeholder="Search by user name, email, or property..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-md"
-          />
-        </div>
+            {/* Search Bar */}
+            <div className="mt-4">
+              <Input
+                placeholder="Search by investor name, email, or property..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-gray-50 border-gray-200 focus:bg-white"
+              />
+            </div>
+          </div>
 
         {/* Pending Requests Tab */}
         <TabsContent value="pending" className="space-y-4">
           {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+            <div className="flex justify-center py-16">
+              <div className="text-center">
+                <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mx-auto mb-4" />
+                <p className="text-gray-600">Loading withdrawal requests...</p>
+              </div>
             </div>
           ) : filteredRequests.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Clock className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600">No pending withdrawal requests</p>
+            <Card className="bg-white border-0 shadow-sm">
+              <CardContent className="py-16 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-100 mb-4">
+                  <Clock className="w-8 h-8 text-yellow-600" />
+                </div>
+                <p className="text-gray-700 font-medium">No pending withdrawal requests</p>
+                <p className="text-gray-500 text-sm mt-1">All withdrawal requests have been processed</p>
               </CardContent>
             </Card>
           ) : (
             filteredRequests.map((request) => (
-              <Card key={request._id} className="hover:shadow-md transition-shadow">
+              <Card key={request._id} className="bg-white border-0 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group">
                 <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Investor</p>
-                      <p className="font-semibold">{request.userId.firstName} {request.userId.lastName}</p>
-                      <p className="text-sm text-gray-500">{request.userId.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Property</p>
-                      <p className="font-semibold">{request.propertyId.title}</p>
-                      {request.groupId && (
-                        <Badge variant="outline" className="mt-2">{request.groupId.displayName}</Badge>
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+                    {/* Left Section - Investor Info */}
+                    <div className="flex-1 border-l-4 border-yellow-400 pl-4">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Investor</p>
+                      <p className="text-lg font-bold text-gray-900">{request.userId.firstName} {request.userId.lastName}</p>
+                      <p className="text-sm text-gray-600 mt-1">{request.userId.email}</p>
+                      {request.userId.phone && (
+                        <p className="text-sm text-gray-500 mt-1">{request.userId.phone}</p>
                       )}
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Amount</p>
-                      <p className="font-semibold text-lg">SAR {request.amount.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Principal: SAR {request.principalAmount.toLocaleString()}
-                      </p>
+
+                    {/* Center Section - Property & Amount */}
+                    <div className="flex-1">
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Property</p>
+                          <p className="font-semibold text-gray-900">{request.propertyId.title}</p>
+                          {request.groupId && (
+                            <Badge className="mt-2 bg-blue-100 text-blue-800 hover:bg-blue-100">{request.groupId.displayName}</Badge>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Withdrawal Amount</p>
+                          <p className="text-2xl font-bold text-indigo-600">SAR {request.amount.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Principal: SAR {request.principalAmount.toLocaleString()} | Yield: SAR {request.rentalYieldEarned.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Requested</p>
-                        <p className="text-sm">{new Date(request.requestedAt).toLocaleDateString()}</p>
+
+                    {/* Right Section - Date & Action */}
+                    <div className="flex flex-col items-end justify-between lg:min-w-max">
+                      <div className="text-right mb-4">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Requested On</p>
+                        <p className="font-semibold text-gray-900">{new Date(request.requestedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                        <p className="text-xs text-gray-500 mt-1">{new Date(request.requestedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                       <Button
-                        variant="outline"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all"
                         size="sm"
                         onClick={() => {
                           setSelectedRequest(request)
@@ -298,7 +360,7 @@ export default function WithdrawalRequests() {
                         }}
                       >
                         <Eye className="w-4 h-4 mr-2" />
-                        Review
+                        Review Request
                       </Button>
                     </div>
                   </div>
@@ -371,6 +433,7 @@ export default function WithdrawalRequests() {
           </TabsContent>
         ))}
       </Tabs>
+      </div>
 
       {/* Details Dialog */}
       {selectedRequest && (

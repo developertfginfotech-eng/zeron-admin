@@ -242,6 +242,8 @@ export default function AdminDashboard() {
   const [otpValue, setOtpValue] = useState('')
   const [otpLoading, setOtpLoading] = useState(false)
   const [pendingRoleChange, setPendingRoleChange] = useState<{ adminId: string; newRole: string } | null>(null)
+  const [pendingAdminCreation, setPendingAdminCreation] = useState<any | null>(null)
+  const [otpContext, setOtpContext] = useState<'role_change' | 'admin_creation'>('role_change')
 
   // Permission Manager states
   const [customSelectedPermissions, setCustomSelectedPermissions] = useState<Permission[]>([])
@@ -415,8 +417,7 @@ export default function AdminDashboard() {
     } else if (roleCategory === 'team_lead') {
       finalRole = selectedAdminRole
     } else if (roleCategory === 'team_member') {
-      // For team members, use 'admin' role by default
-      finalRole = 'admin'
+      finalRole = 'team_member'
     }
 
     // Validate selected role
@@ -429,26 +430,69 @@ export default function AdminDashboard() {
       return
     }
 
+    const groupIds = Array.from(selectedGroupsForUser)
+    const adminData = {
+      firstName: newAdminForm.firstName,
+      lastName: newAdminForm.lastName,
+      email: newAdminForm.email,
+      phone: newAdminForm.phone || undefined,
+      position: newAdminForm.position || undefined,
+      password: newAdminForm.password,
+      role: finalRole,
+      groupIds: groupIds.length > 0 ? groupIds : undefined
+    }
+
+    // Check if OTP is required based on current user role
+    const currentUserRole = currentUser?.role
+    const requiresOTP = currentUserRole !== 'super_admin'
+
+    if (requiresOTP) {
+      // Store pending admin creation data and request OTP
+      try {
+        setIsPromoting(true)
+
+        // Request OTP from backend
+        const otpResponse = await apiCall('/api/admin/admin-users/request-otp', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'create_admin',
+            adminData
+          })
+        })
+
+        if (otpResponse.success) {
+          setPendingAdminCreation(adminData)
+          setOtpContext('admin_creation')
+          setShowOTPDialog(true)
+          setShowCreateAdminDialog(false)
+          toast({
+            title: "OTP Required",
+            description: "An OTP has been sent to the Super Admin's email. Please enter it to continue.",
+          })
+        }
+      } catch (err: any) {
+        toast({
+          title: "Error",
+          description: err.message || "Failed to request OTP",
+          variant: "destructive"
+        })
+      } finally {
+        setIsPromoting(false)
+      }
+      return
+    }
+
+    // Super admin doesn't need OTP - create directly
     try {
       setIsPromoting(true)
-      const groupIds = Array.from(selectedGroupsForUser)
 
       const response = await apiCall('/api/admin/admin-users', {
         method: 'POST',
-        body: JSON.stringify({
-          firstName: newAdminForm.firstName,
-          lastName: newAdminForm.lastName,
-          email: newAdminForm.email,
-          phone: newAdminForm.phone || undefined,
-          position: newAdminForm.position || undefined,
-          password: newAdminForm.password,
-          role: finalRole,
-          groupIds: groupIds.length > 0 ? groupIds : undefined
-        })
+        body: JSON.stringify(adminData)
       })
 
       if (response.success) {
-        const roleLabel = roleCategory === 'team_lead' ? 'Team Lead' : 'Team Member'
+        const roleLabel = roleCategory === 'team_lead' ? 'Team Lead' : roleCategory === 'team_member' ? 'Team Member' : 'Admin'
         toast({
           title: "Success",
           description: `${roleLabel} ${newAdminForm.firstName} ${newAdminForm.lastName} created successfully${selectedGroupsForUser.size > 0 ? ` and added to ${selectedGroupsForUser.size} team(s)` : ''}`,
@@ -635,8 +679,8 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleVerifyOTPForRoleChange = async () => {
-    if (!otpValue || !pendingRoleChange) {
+  const handleVerifyOTP = async () => {
+    if (!otpValue) {
       toast({
         title: "Error",
         description: "Please enter OTP code",
@@ -648,30 +692,113 @@ export default function AdminDashboard() {
     try {
       setOtpLoading(true)
 
-      // Step 3: Send OTP verification
-      const verificationResponse = await apiCall(`/api/admin/admin-users/${pendingRoleChange.adminId}/role`, {
-        method: 'PUT',
-        body: JSON.stringify({ role: pendingRoleChange.newRole, otp: otpValue })
-      })
+      if (otpContext === 'role_change') {
+        // Handle role change OTP verification
+        if (!pendingRoleChange) {
+          toast({
+            title: "Error",
+            description: "No pending role change found",
+            variant: "destructive"
+          })
+          return
+        }
 
-      if (verificationResponse.success) {
-        toast({
-          title: "Success",
-          description: `Admin role has been changed to ${getRoleDisplayName(pendingRoleChange.newRole)}`
+        // Check if current user is super admin (use different endpoint)
+        const currentUserRole = currentUser?.role
+        const isSuperAdmin = currentUserRole === 'super_admin'
+
+        const verificationResponse = isSuperAdmin
+          ? await apiCall(`/api/admin/admin-users/${pendingRoleChange.adminId}/role`, {
+              method: 'PUT',
+              body: JSON.stringify({ role: pendingRoleChange.newRole, otp: otpValue })
+            })
+          : await apiCall('/api/admin/admin-users/verify-role-change-otp', {
+              method: 'POST',
+              body: JSON.stringify({
+                adminId: pendingRoleChange.adminId,
+                newRole: pendingRoleChange.newRole,
+                otp: otpValue
+              })
+            })
+
+        if (verificationResponse.success) {
+          toast({
+            title: "Success",
+            description: `Admin role has been changed to ${getRoleDisplayName(pendingRoleChange.newRole)}`
+          })
+          setShowOTPDialog(false)
+          setOtpValue('')
+          setPendingRoleChange(null)
+          setShowChangeRoleDialog(false)
+          setSelectedAdminForRoleChange(null)
+          setNewRoleForAdmin('')
+          fetchAllData()
+        } else {
+          toast({
+            title: "Error",
+            description: verificationResponse.message || "Failed to verify OTP",
+            variant: "destructive"
+          })
+        }
+      } else if (otpContext === 'admin_creation') {
+        // Handle admin creation OTP verification
+        if (!pendingAdminCreation) {
+          toast({
+            title: "Error",
+            description: "No pending admin creation found",
+            variant: "destructive"
+          })
+          return
+        }
+
+        // Check if current user is super admin
+        const currentUserRole = currentUser?.role
+        const isSuperAdmin = currentUserRole === 'super_admin'
+
+        const verificationResponse = await apiCall('/api/admin/admin-users/verify-otp', {
+          method: 'POST',
+          body: JSON.stringify({
+            adminData: pendingAdminCreation,
+            otp: otpValue,
+            createPending: !isSuperAdmin // Create pending registration if not super admin
+          })
         })
-        setShowOTPDialog(false)
-        setOtpValue('')
-        setPendingRoleChange(null)
-        setShowChangeRoleDialog(false)
-        setSelectedAdminForRoleChange(null)
-        setNewRoleForAdmin('')
-        fetchAllData()
-      } else {
-        toast({
-          title: "Error",
-          description: verificationResponse.message || "Failed to verify OTP",
-          variant: "destructive"
-        })
+
+        if (verificationResponse.success) {
+          const roleLabel = pendingAdminCreation.role === 'team_lead' ? 'Team Lead' :
+                           pendingAdminCreation.role === 'team_member' ? 'Team Member' : 'Admin'
+
+          // Different messages based on whether it's a pending registration or direct creation
+          if (isSuperAdmin) {
+            toast({
+              title: "Success",
+              description: `${roleLabel} ${pendingAdminCreation.firstName} ${pendingAdminCreation.lastName} created successfully`
+            })
+          } else {
+            toast({
+              title: "Pending Approval",
+              description: `${roleLabel} registration for ${pendingAdminCreation.firstName} ${pendingAdminCreation.lastName} has been submitted and is awaiting Super Admin approval.`,
+              className: "bg-blue-50 border-blue-200"
+            })
+          }
+
+          setShowOTPDialog(false)
+          setOtpValue('')
+          setPendingAdminCreation(null)
+          setNewAdminForm({ firstName: '', lastName: '', email: '', phone: '', position: '', password: '' })
+          setRoleCategory(null)
+          setSelectedAdminRole(null)
+          setSelectedTeamMemberRole(null)
+          setSelectedGroupsForUser(new Set())
+          setGroupPermissionsForUser({})
+          fetchAllData()
+        } else {
+          toast({
+            title: "Error",
+            description: verificationResponse.message || "Failed to verify OTP",
+            variant: "destructive"
+          })
+        }
       }
     } catch (err: any) {
       toast({
@@ -684,17 +811,12 @@ export default function AdminDashboard() {
     }
   }
 
+  // Keep for backward compatibility
+  const handleVerifyOTPForRoleChange = handleVerifyOTP
+
   const handleChangeRole = async (adminId: string, newRole: string) => {
     try {
       const currentUserRole = getCurrentUser()?.role
-      if (currentUserRole !== 'super_admin') {
-        toast({
-          title: "Error",
-          description: "Only Super Admins can change admin roles",
-          variant: "destructive"
-        })
-        return
-      }
 
       if (!newRole) {
         toast({
@@ -705,16 +827,52 @@ export default function AdminDashboard() {
         return
       }
 
-      // Step 1: Send role change request without OTP (triggers OTP email)
+      // Check if OTP is required based on current user role
+      const requiresOTP = currentUserRole !== 'super_admin'
+
+      if (requiresOTP) {
+        // Admin or Team Lead changing a role - request OTP
+        try {
+          const otpResponse = await apiCall('/api/admin/admin-users/request-role-change-otp', {
+            method: 'POST',
+            body: JSON.stringify({
+              adminId,
+              newRole
+            })
+          })
+
+          if (otpResponse.success) {
+            setPendingRoleChange({ adminId, newRole })
+            setOtpContext('role_change')
+            setShowOTPDialog(true)
+            setShowChangeRoleDialog(false)
+            toast({
+              title: "OTP Required",
+              description: "An OTP has been sent to the Super Admin's email. Please enter it to continue.",
+            })
+          }
+        } catch (err: any) {
+          toast({
+            title: "Error",
+            description: err.message || "Failed to request OTP for role change",
+            variant: "destructive"
+          })
+        }
+        return
+      }
+
+      // Super admin doesn't need OTP - change role directly
+      // Step 1: Send role change request without OTP (triggers OTP email if backend requires it)
       const initialResponse = await apiCall(`/api/admin/admin-users/${adminId}/role`, {
         method: 'PUT',
         body: JSON.stringify({ role: newRole })
       })
 
-      // Step 2: If OTP is required, show OTP input dialog
+      // Step 2: If OTP is required by backend, show OTP input dialog
       if (initialResponse.data?.step === 'otp_required') {
         // Store the pending role change and show OTP dialog
         setPendingRoleChange({ adminId, newRole })
+        setOtpContext('role_change')
         setShowOTPDialog(true)
       } else if (initialResponse.success) {
         toast({
@@ -1800,11 +1958,7 @@ export default function AdminDashboard() {
 
           {/* Group Management Component */}
           <Card>
-            <CardHeader>
-              <CardTitle>Create & Manage Groups</CardTitle>
-              <CardDescription>Create new groups, add members, configure permissions, and manage sub-groups</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <GroupManagement />
             </CardContent>
           </Card>
@@ -2321,7 +2475,7 @@ export default function AdminDashboard() {
                   onClick={() => {
                     setRoleCategory('team_lead')
                     setSelectedTeamMemberRole(null)
-                    setSelectedAdminRole('admin')
+                    setSelectedAdminRole('team_lead')
                   }}
                   className={`p-3 rounded-lg border-2 transition ${
                     roleCategory === 'team_lead'
@@ -2979,7 +3133,10 @@ export default function AdminDashboard() {
           <DialogHeader>
             <DialogTitle>Verify OTP</DialogTitle>
             <DialogDescription>
-              Enter the OTP code sent to your email to confirm the role change for {pendingRoleChange ? getRoleDisplayName(pendingRoleChange.newRole) : 'admin'}.
+              {otpContext === 'role_change'
+                ? `Enter the OTP code sent to Super Admin's email to confirm the role change for ${pendingRoleChange ? getRoleDisplayName(pendingRoleChange.newRole) : 'admin'}.`
+                : `Enter the OTP code sent to Super Admin's email to confirm the creation of ${pendingAdminCreation ? `${pendingAdminCreation.firstName} ${pendingAdminCreation.lastName}` : 'new admin user'}.`
+              }
             </DialogDescription>
           </DialogHeader>
 
@@ -2996,7 +3153,7 @@ export default function AdminDashboard() {
                 className="text-center text-lg font-mono tracking-widest"
               />
               <p className="text-xs text-muted-foreground mt-2">
-                📧 Check your email for the OTP code. If using backend logs, look for "OTP" in the console output.
+                📧 The OTP has been sent to the Super Admin's email. Please check the email for the code.
               </p>
             </div>
 
@@ -3014,14 +3171,19 @@ export default function AdminDashboard() {
               onClick={() => {
                 setShowOTPDialog(false)
                 setOtpValue('')
-                setPendingRoleChange(null)
+                if (otpContext === 'role_change') {
+                  setPendingRoleChange(null)
+                } else {
+                  setPendingAdminCreation(null)
+                  setShowCreateAdminDialog(true) // Re-open the create admin dialog
+                }
               }}
               disabled={otpLoading}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleVerifyOTPForRoleChange}
+              onClick={handleVerifyOTP}
               disabled={!otpValue || otpLoading}
             >
               {otpLoading ? (

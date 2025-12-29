@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useLocation } from "wouter"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +32,8 @@ import {
   Briefcase,
   CalendarDays,
   Search,
-  Loader2
+  Loader2,
+  ShieldAlert
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -114,8 +116,26 @@ const formatDate = (dateString: string) => {
   })
 }
 
+// Helper to get current user info
+const getCurrentUser = (): any => {
+  try {
+    const userDataStr = localStorage.getItem('userData')
+    if (userDataStr) {
+      return JSON.parse(userDataStr)
+    }
+    const token = localStorage.getItem('zaron_token') || localStorage.getItem('authToken')
+    if (!token) return null
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    return JSON.parse(atob(parts[1]))
+  } catch (err) {
+    return null
+  }
+}
+
 export default function SuperAdminApprovals() {
   const { toast } = useToast()
+  const [, setLocation] = useLocation()
   const [activeTab, setActiveTab] = useState('admins')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -124,6 +144,19 @@ export default function SuperAdminApprovals() {
   const [showApproveDialog, setShowApproveDialog] = useState(false)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+
+  // Check if user is super admin
+  useEffect(() => {
+    const currentUser = getCurrentUser()
+    if (!currentUser || currentUser.role !== 'super_admin') {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "Only Super Admins can access this page"
+      })
+      setLocation('/admin')
+    }
+  }, [])
 
   // Fetch pending users based on role
   const fetchPendingUsers = async (role: string) => {
