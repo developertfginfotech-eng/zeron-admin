@@ -537,6 +537,15 @@ export default function GroupManagement() {
     return matchesSearch && matchesDepartment
   })
 
+  // Flatten all groups (including subgroups) for dropdowns where we need to show all groups
+  const allGroupsFlattened = groups.reduce((acc: GroupData[], group) => {
+    acc.push(group)
+    if (group.subGroups && group.subGroups.length > 0) {
+      acc.push(...group.subGroups)
+    }
+    return acc
+  }, [])
+
   const groupStats = {
     total: filteredGroups.length,
     totalMembers: filteredGroups.reduce((sum, g) => sum + (g.memberCount || 0), 0),
@@ -567,9 +576,12 @@ export default function GroupManagement() {
           <div className="flex gap-2 min-w-full md:min-w-auto md:flex-wrap">
             {TAB_OPTIONS
               .filter((tab) => {
-                // Hide "Create Group" tab for team_lead and team_member
-                if (tab.id === 'create' && (userRole === 'team_lead' || userRole === 'team_member')) {
-                  return false
+                // Hide certain tabs for team_lead and team_member
+                if (userRole === 'team_lead' || userRole === 'team_member') {
+                  // Team leads and members cannot create groups, manage sub-groups, or assign team leads
+                  if (tab.id === 'create' || tab.id === 'sub-groups' || tab.id === 'team-leads') {
+                    return false
+                  }
                 }
                 return true
               })
@@ -1725,16 +1737,16 @@ export default function GroupManagement() {
                     id="groupSelectMember"
                     value={selectedGroup?._id || ""}
                     onChange={(e) => {
-                      const group = filteredGroups.find(g => g._id === e.target.value)
+                      const group = allGroupsFlattened.find(g => g._id === e.target.value)
                       setSelectedGroup(group || null)
                       setMemberPermissions(group?.permissions || [])
                     }}
                     className="w-full px-3 py-2 border rounded-md text-sm mt-2"
                   >
                     <option value="">Choose a group...</option>
-                    {filteredGroups.map((group) => (
+                    {allGroupsFlattened.map((group) => (
                       <option key={group._id} value={group._id}>
-                        {group.displayName}
+                        {group.parentGroupId ? `  ↳ ${group.displayName}` : group.displayName}
                       </option>
                     ))}
                   </select>
