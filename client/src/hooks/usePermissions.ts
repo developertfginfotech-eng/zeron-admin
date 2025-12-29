@@ -32,6 +32,8 @@ export function usePermissions() {
         const response = await apiCall('/api/admin/my-permissions');
 
         if (response.success) {
+          console.log('🔐 Permissions loaded:', response.data.effectivePermissions);
+          console.log('👤 User role:', response.data.role);
           setPermissions(response.data.effectivePermissions || []);
           setUserRole(response.data.role);
         } else {
@@ -63,7 +65,11 @@ export function usePermissions() {
     // All other users (admin, team_lead, team_member) get permissions from their groups
     // Check if user has the specific permission from their group assignments
     const permission = permissions.find(p => p.resource === resource);
-    return permission ? permission.actions.includes(action) : false;
+    const result = permission ? permission.actions.includes(action) : false;
+
+    console.log(`🔍 Permission check: ${resource}:${action} = ${result}`, permission);
+
+    return result;
   };
 
   /**

@@ -817,7 +817,7 @@ export default function EnhancedKYCDashboard() {
 
                   {/* Action Buttons - Only show if user has permission */}
                   <div className="flex justify-end gap-3">
-                    {(hasPermission('kyc:approval', 'reject') || hasPermission('kyc:verification', 'reject')) && (
+                    {hasPermission('kyc:verification', 'reject') && (
                       <Button
                         variant="outline"
                         onClick={() => handleUpdateKYCStatus(selectedApplicant.id, 'rejected', 'Documents need revision')}
@@ -835,7 +835,7 @@ export default function EnhancedKYCDashboard() {
                       <FileText className="h-4 w-4 mr-2" />
                       Add Notes
                     </Button>
-                    {(hasPermission('kyc:approval', 'approve') || hasPermission('kyc:verification', 'approve')) && (
+                    {hasPermission('kyc:verification', 'approve') && (
                       <Button
                         onClick={() => handleUpdateKYCStatus(selectedApplicant.id, 'approved')}
                         disabled={updating}
@@ -845,8 +845,6 @@ export default function EnhancedKYCDashboard() {
                       </Button>
                     )}
                     {!hasAnyPermission([
-                      { resource: 'kyc:approval', action: 'approve' },
-                      { resource: 'kyc:approval', action: 'reject' },
                       { resource: 'kyc:verification', action: 'approve' },
                       { resource: 'kyc:verification', action: 'reject' }
                     ]) && (
