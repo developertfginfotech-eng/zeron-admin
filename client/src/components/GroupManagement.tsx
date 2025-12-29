@@ -23,6 +23,7 @@ import {
   BarChart3,
   UserPlus,
   Shield,
+  Crown,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import PermissionManager from "@/components/PermissionManager"
@@ -146,6 +147,18 @@ export default function GroupManagement() {
   }
 
   const currentUserId = getCurrentUserId()
+
+  // Check if current user is a member of a group
+  const isUserMemberOfGroup = (group: GroupData) => {
+    if (!currentUserId || !group.members) return false
+    return group.members.some((member: any) => {
+      // Handle nested structure: member.userId._id or member.userId or member._id
+      const userData = member.userId || member
+      const memberId = userData._id || userData
+      return memberId === currentUserId
+    })
+  }
+
   const [activeTab, setActiveTab] = useState("overview")
   const [groups, setGroups] = useState<GroupData[]>([])
   const [users, setUsers] = useState<User[]>([])
@@ -736,7 +749,15 @@ export default function GroupManagement() {
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg">{group.displayName}</CardTitle>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <CardTitle className="text-lg">{group.displayName}</CardTitle>
+                              {isUserMemberOfGroup(group) && (
+                                <Badge className="bg-green-600 text-white text-xs">
+                                  <Crown className="h-3 w-3 mr-1" />
+                                  Your Group
+                                </Badge>
+                              )}
+                            </div>
                             <CardDescription className="mt-1">{group.description}</CardDescription>
                           </div>
                           <div className="flex gap-2">
@@ -793,7 +814,12 @@ export default function GroupManagement() {
                             <p className="text-xs font-semibold text-muted-foreground mb-2">Sub-groups:</p>
                             <div className="flex flex-wrap gap-1">
                               {group.subGroups.map((subgroup) => (
-                                <Badge key={subgroup._id} variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950">
+                                <Badge
+                                  key={subgroup._id}
+                                  variant="outline"
+                                  className={`text-xs ${isUserMemberOfGroup(subgroup) ? 'bg-green-100 dark:bg-green-950 border-green-600' : 'bg-blue-50 dark:bg-blue-950'}`}
+                                >
+                                  {isUserMemberOfGroup(subgroup) && <Crown className="h-3 w-3 mr-1 text-green-600" />}
                                   └ {subgroup.displayName}
                                 </Badge>
                               ))}
@@ -1309,9 +1335,15 @@ export default function GroupManagement() {
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 <CardTitle className="text-base">{subgroup.displayName}</CardTitle>
                                 <Badge variant="secondary" className="text-xs">Sub-group</Badge>
+                                {isUserMemberOfGroup(subgroup) && (
+                                  <Badge className="bg-green-600 text-white text-xs">
+                                    <Crown className="h-3 w-3 mr-1" />
+                                    Your Group
+                                  </Badge>
+                                )}
                               </div>
                               <CardDescription className="text-sm">
                                 Parent: <span className="font-semibold text-foreground">{group.displayName}</span>
