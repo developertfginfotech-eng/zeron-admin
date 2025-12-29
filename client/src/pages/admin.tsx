@@ -42,8 +42,6 @@ import {
   Trash
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import GroupManagement from "@/components/GroupManagement"
-import PermissionManager from "@/components/PermissionManager"
 
 // API Configuration
 const API_BASE_URL = 'https://zeron-backend-z5o1.onrender.com'
@@ -244,10 +242,6 @@ export default function AdminDashboard() {
   const [pendingRoleChange, setPendingRoleChange] = useState<{ adminId: string; newRole: string } | null>(null)
   const [pendingAdminCreation, setPendingAdminCreation] = useState<any | null>(null)
   const [otpContext, setOtpContext] = useState<'role_change' | 'admin_creation'>('role_change')
-
-  // Permission Manager states
-  const [customSelectedPermissions, setCustomSelectedPermissions] = useState<Permission[]>([])
-  const [selectedGroupForPermissions, setSelectedGroupForPermissions] = useState<string | null>(null)
 
   // Fetch all data on mount
   useEffect(() => {
@@ -1158,10 +1152,6 @@ export default function AdminDashboard() {
             <UserCog className="h-4 w-4 mr-2" />
             Admins
           </TabsTrigger>
-          <TabsTrigger value="groups" className="cursor-pointer">
-            <Users className="h-4 w-4 mr-2" />
-            Groups
-          </TabsTrigger>
           <TabsTrigger value="teams" className="cursor-pointer">
             <Users className="h-4 w-4 mr-2" />
             Teams
@@ -1940,94 +1930,6 @@ export default function AdminDashboard() {
                       </Card>
                     )
                   })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Groups Tab */}
-        <TabsContent value="groups" className="space-y-6">
-          {/* Groups Management Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Groups Management</h2>
-              <p className="text-muted-foreground mt-1">Create, manage, and configure permission groups</p>
-            </div>
-          </div>
-
-          {/* Group Management Component */}
-          <Card>
-            <CardContent className="pt-6">
-              <GroupManagement />
-            </CardContent>
-          </Card>
-
-          {/* Permission Manager */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Assign Permissions to Groups</CardTitle>
-              <CardDescription>Use the two-column interface below to select and configure permissions for your groups</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Group Selector */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Group</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {groups.length === 0 ? (
-                    <p className="text-sm text-gray-500 col-span-full">No groups created yet. Create a group above first.</p>
-                  ) : (
-                    groups.map((group) => (
-                      <button
-                        key={group._id}
-                        onClick={() => {
-                          setSelectedGroupForPermissions(group._id)
-                          setCustomSelectedPermissions(group.permissions || [])
-                        }}
-                        className={`p-3 rounded-lg border-2 text-left transition-all ${
-                          selectedGroupForPermissions === group._id
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                      >
-                        <p className="font-medium text-sm">{group.displayName}</p>
-                        <p className="text-xs text-gray-500">{group.permissions?.length || 0} permissions</p>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Permission Manager Component */}
-              {selectedGroupForPermissions ? (
-                <div>
-                  <PermissionManager
-                    allPermissions={roles.flatMap(role => role.permissions || [])}
-                    selectedPermissions={customSelectedPermissions}
-                    onPermissionsChange={setCustomSelectedPermissions}
-                  />
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 mt-6 justify-end">
-                    <Button variant="outline" onClick={() => setSelectedGroupForPermissions(null)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        toast({
-                          title: "Permissions Updated",
-                          description: `Permissions saved for selected group`
-                        })
-                      }}
-                    >
-                      Save Permissions
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <Key className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p className="text-gray-600">Select a group to configure its permissions</p>
                 </div>
               )}
             </CardContent>

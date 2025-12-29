@@ -23,6 +23,7 @@ import Admin from "@/pages/admin";
 import AdminRegistration from "@/pages/admin-registration";
 import AdminVerifyOTP from "@/pages/admin-verify-otp";
 import SuperAdminApprovals from "@/pages/super-admin-approvals";
+import AdminGroupsPage from "@/pages/admin-groups";
 import WithdrawalRequests from "@/pages/withdrawal-requests";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -49,6 +50,7 @@ function AdminRouter() {
       <Route path="/admin/register" component={AdminRegistration} />
       <Route path="/admin/verify-otp" component={AdminVerifyOTP} />
       <Route path="/admin/approvals" component={SuperAdminApprovals} />
+      <Route path="/admin/groups" component={AdminGroupsPage} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
