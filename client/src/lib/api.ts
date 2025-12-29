@@ -53,7 +53,10 @@ export const API_ENDPOINTS = {
     LIST_WITHDRAWALS: '/api/admin/withdrawal-requests',
     GET_WITHDRAWAL: (id: string) => `/api/admin/withdrawal-requests/${id}`,
     APPROVE_WITHDRAWAL: (id: string) => `/api/admin/withdrawal-requests/${id}/approve`,
-    REJECT_WITHDRAWAL: (id: string) => `/api/admin/withdrawal-requests/${id}/reject`
+    REJECT_WITHDRAWAL: (id: string) => `/api/admin/withdrawal-requests/${id}/reject`,
+
+    // Permissions
+    MY_PERMISSIONS: '/api/admin/my-permissions'
   },
   
   // Public property endpoints

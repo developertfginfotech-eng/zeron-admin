@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { AlertCircle, CheckCircle, Clock, Eye, XCircle, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { apiCall, API_ENDPOINTS } from '@/lib/api'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface WithdrawalRequest {
   _id: string
@@ -46,6 +47,7 @@ interface WithdrawalRequest {
 
 export default function WithdrawalRequests() {
   const { toast } = useToast()
+  const { hasPermission, userRole, loading: permissionsLoading } = usePermissions()
 
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -522,28 +524,37 @@ export default function WithdrawalRequests() {
                 </div>
               )}
 
-              {/* Action Buttons */}
+              {/* Action Buttons - Only show if user has permission */}
               {selectedRequest.status === 'pending' && (
                 <DialogFooter className="gap-2">
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      setShowDetailsDialog(false)
-                      setShowRejectDialog(true)
-                    }}
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Reject Request
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowDetailsDialog(false)
-                      setShowApproveDialog(true)
-                    }}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Approve & Credit Wallet
-                  </Button>
+                  {hasPermission('withdrawals', 'reject') && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        setShowDetailsDialog(false)
+                        setShowRejectDialog(true)
+                      }}
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Reject Request
+                    </Button>
+                  )}
+                  {hasPermission('withdrawals', 'approve') && (
+                    <Button
+                      onClick={() => {
+                        setShowDetailsDialog(false)
+                        setShowApproveDialog(true)
+                      }}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Approve & Credit Wallet
+                    </Button>
+                  )}
+                  {!hasPermission('withdrawals', 'approve') && !hasPermission('withdrawals', 'reject') && (
+                    <p className="text-sm text-muted-foreground">
+                      You don't have permission to approve or reject withdrawal requests
+                    </p>
+                  )}
                 </DialogFooter>
               )}
             </div>
