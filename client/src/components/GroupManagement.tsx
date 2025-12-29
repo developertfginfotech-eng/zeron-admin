@@ -2073,22 +2073,28 @@ export default function GroupManagement() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Your Groups</CardTitle>
+                <CardTitle className="text-sm">{userRole === 'super_admin' ? 'System Access' : 'Your Groups'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-blue-600">
-                  {groups.flatMap((group) => {
-                    const userGroups = []
-                    if (isUserMemberOfGroup(group)) userGroups.push(group)
-                    if (group.subGroups) {
-                      group.subGroups.forEach((subgroup) => {
-                        if (isUserMemberOfGroup(subgroup)) userGroups.push(subgroup)
-                      })
-                    }
-                    return userGroups
-                  }).length}
+                  {userRole === 'super_admin' ? (
+                    'Unlimited'
+                  ) : (
+                    groups.flatMap((group) => {
+                      const userGroups = []
+                      if (isUserMemberOfGroup(group)) userGroups.push(group)
+                      if (group.subGroups) {
+                        group.subGroups.forEach((subgroup) => {
+                          if (isUserMemberOfGroup(subgroup)) userGroups.push(subgroup)
+                        })
+                      }
+                      return userGroups
+                    }).length
+                  )}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Groups you belong to</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {userRole === 'super_admin' ? 'Full system access' : 'Groups you belong to'}
+                </p>
               </CardContent>
             </Card>
 
@@ -2098,18 +2104,24 @@ export default function GroupManagement() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-indigo-600">
-                  {groups.flatMap((group) => {
-                    const userGroups = []
-                    if (isUserMemberOfGroup(group)) userGroups.push(group)
-                    if (group.subGroups) {
-                      group.subGroups.forEach((subgroup) => {
-                        if (isUserMemberOfGroup(subgroup)) userGroups.push(subgroup)
-                      })
-                    }
-                    return userGroups
-                  }).reduce((sum, g) => sum + (g.permissions?.length || 0), 0)}
+                  {userRole === 'super_admin' ? (
+                    PERMISSION_RESOURCES.reduce((sum, cat) => sum + cat.resources.length, 0)
+                  ) : (
+                    groups.flatMap((group) => {
+                      const userGroups = []
+                      if (isUserMemberOfGroup(group)) userGroups.push(group)
+                      if (group.subGroups) {
+                        group.subGroups.forEach((subgroup) => {
+                          if (isUserMemberOfGroup(subgroup)) userGroups.push(subgroup)
+                        })
+                      }
+                      return userGroups
+                    }).reduce((sum, g) => sum + (g.permissions?.length || 0), 0)
+                  )}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Permission resources assigned</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {userRole === 'super_admin' ? 'All system resources' : 'Permission resources assigned'}
+                </p>
               </CardContent>
             </Card>
 
