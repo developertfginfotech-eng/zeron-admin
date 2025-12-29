@@ -55,17 +55,13 @@ export function usePermissions() {
    * @returns boolean - true if user has permission, false otherwise
    */
   const hasPermission = (resource: string, action: string): boolean => {
-    // Super admin has all permissions
+    // Only super admin has all permissions
     if (userRole === 'super_admin') {
       return true;
     }
 
-    // Admin has all permissions
-    if (userRole === 'admin') {
-      return true;
-    }
-
-    // Check if user has the specific permission
+    // All other users (admin, team_lead, team_member) get permissions from their groups
+    // Check if user has the specific permission from their group assignments
     const permission = permissions.find(p => p.resource === resource);
     return permission ? permission.actions.includes(action) : false;
   };
