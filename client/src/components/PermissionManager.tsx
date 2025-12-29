@@ -58,11 +58,12 @@ export default function PermissionManager({
   )
 
   const handleAddPermission = (permission: Permission) => {
-    // Start with empty actions array - user will select specific actions
-    const newPermission = { resource: permission.resource, actions: [] }
+    // Auto-select 'view' action by default - you need to see data to work with it
+    const defaultActions = ['view']
+    const newPermission = { resource: permission.resource, actions: defaultActions }
     const newPermissions = [...deduplicatedSelectedPermissions, newPermission]
     onPermissionsChange(newPermissions)
-    setSelectedActions({ ...selectedActions, [permission.resource]: [] })
+    setSelectedActions({ ...selectedActions, [permission.resource]: defaultActions })
   }
 
   const handleRemovePermission = (resource: string) => {
