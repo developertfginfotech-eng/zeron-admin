@@ -112,11 +112,10 @@ export function AppSidebar() {
 
   const userRole = getUserRole()
 
-  // Show Administration section to Super Admins, Admins, and Team Leads
+  // Show Administration section to all admin roles except team_member
   const isSuperAdmin = userRole === 'super_admin'
-  const isAdmin = userRole === 'admin' || userRole?.includes('admin')
-  const isTeamLead = userRole === 'team_lead'
-  const canAccessAdministration = isSuperAdmin || isAdmin || isTeamLead
+  const isTeamMember = userRole === 'team_member'
+  const canAccessAdministration = userRole && !isTeamMember && userRole !== 'user'
 
   return (
     <Sidebar className="glass-card border-r-0">
