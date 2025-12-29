@@ -119,6 +119,8 @@ export function AppSidebar() {
 
   // Show Administration section to all admin roles except team_member
   const isSuperAdmin = userRole === 'super_admin'
+  const isAdmin = userRole === 'admin'
+  const isTeamLead = userRole === 'team_lead'
   const isTeamMember = userRole === 'team_member'
   const canAccessAdministration = userRole && !isTeamMember && userRole !== 'user'
 
@@ -165,6 +167,11 @@ export function AppSidebar() {
                 {adminItems.map((item) => {
                   // Admin Approvals only for Super Admin
                   if (item.title === 'Admin Approvals' && !isSuperAdmin) {
+                    return null
+                  }
+
+                  // Admin Roles only for Super Admin and Admin (not team_lead or team_member)
+                  if (item.title === 'Admin Roles' && (isTeamLead || isTeamMember)) {
                     return null
                   }
 
