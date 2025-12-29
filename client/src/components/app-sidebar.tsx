@@ -112,8 +112,11 @@ export function AppSidebar() {
 
   const userRole = getUserRole()
 
-  // Only show Administration section to Super Admins
+  // Show Administration section to Super Admins, Admins, and Team Leads
   const isSuperAdmin = userRole === 'super_admin'
+  const isAdmin = userRole === 'admin' || userRole?.includes('admin')
+  const isTeamLead = userRole === 'team_lead'
+  const canAccessAdministration = isSuperAdmin || isAdmin || isTeamLead
 
   return (
     <Sidebar className="glass-card border-r-0">
@@ -149,22 +152,29 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Only show Administration section to Super Admins */}
-        {isSuperAdmin && (
+        {/* Show Administration section to Super Admins, Admins, and Team Leads */}
+        {canAccessAdministration && (
           <SidebarGroup>
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={location === item.url}>
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {adminItems.map((item) => {
+                  // Admin Approvals only for Super Admin
+                  if (item.title === 'Admin Approvals' && !isSuperAdmin) {
+                    return null
+                  }
+
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={location === item.url}>
+                        <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
