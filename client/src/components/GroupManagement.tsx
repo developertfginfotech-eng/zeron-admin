@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import PermissionManager from "@/components/PermissionManager"
+import { usePermissions } from "@/hooks/usePermissions"
 
 const API_BASE_URL = "https://zeron-backend-z5o1.onrender.com"
 
@@ -128,6 +129,7 @@ const TAB_OPTIONS = [
 
 export default function GroupManagement() {
   const { toast } = useToast()
+  const { userRole } = usePermissions()
   const [activeTab, setActiveTab] = useState("overview")
   const [groups, setGroups] = useState<GroupData[]>([])
   const [users, setUsers] = useState<User[]>([])
@@ -563,7 +565,15 @@ export default function GroupManagement() {
       >
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory scrollbar-hide">
           <div className="flex gap-2 min-w-full md:min-w-auto md:flex-wrap">
-            {TAB_OPTIONS.map((tab) => {
+            {TAB_OPTIONS
+              .filter((tab) => {
+                // Hide "Create Group" tab for team_lead and team_member
+                if (tab.id === 'create' && (userRole === 'team_lead' || userRole === 'team_member')) {
+                  return false
+                }
+                return true
+              })
+              .map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
 
@@ -1603,7 +1613,7 @@ export default function GroupManagement() {
                 {selectedGroup && (
                   <>
                     <div>
-                      <Label htmlFor="userSelect">Select Admin User</Label>
+                      <Label htmlFor="userSelect">Select Team Lead</Label>
                       <select
                         id="userSelect"
                         value={selectedUserForGroup || ""}
@@ -1612,7 +1622,7 @@ export default function GroupManagement() {
                       >
                         <option value="">Choose a user...</option>
                         {users
-                          .filter((u: any) => u.role === 'admin' && u.status === 'active')
+                          .filter((u: any) => u.role === 'team_lead' && u.status === 'active')
                           .map((user) => (
                             <option key={user._id} value={user._id}>
                               {user.firstName} {user.lastName} ({user.email})
