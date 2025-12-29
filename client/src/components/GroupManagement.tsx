@@ -712,26 +712,32 @@ export default function GroupManagement() {
                             <CardDescription className="mt-1">{group.description}</CardDescription>
                           </div>
                           <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedParentForSubgroup(group._id)
-                                setShowSubgroupForm(true)
-                              }}
-                              className="text-blue-600 hover:text-blue-700"
-                              title="Create a sub-group"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteGroup(group._id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {/* Only super_admin and admin can create sub-groups */}
+                            {(userRole === 'super_admin' || userRole === 'admin') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedParentForSubgroup(group._id)
+                                  setShowSubgroupForm(true)
+                                }}
+                                className="text-blue-600 hover:text-blue-700"
+                                title="Create a sub-group"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {/* Only super_admin and admin can delete groups */}
+                            {(userRole === 'super_admin' || userRole === 'admin') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteGroup(group._id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-2 mt-3">
