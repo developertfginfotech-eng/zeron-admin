@@ -130,6 +130,22 @@ const TAB_OPTIONS = [
 export default function GroupManagement() {
   const { toast } = useToast()
   const { userRole } = usePermissions()
+
+  // Get current user ID
+  const getCurrentUserId = () => {
+    try {
+      const userData = localStorage.getItem('userData')
+      if (userData) {
+        const user = JSON.parse(userData)
+        return user.id || user._id
+      }
+    } catch (error) {
+      console.error('Error getting user ID:', error)
+    }
+    return null
+  }
+
+  const currentUserId = getCurrentUserId()
   const [activeTab, setActiveTab] = useState("overview")
   const [groups, setGroups] = useState<GroupData[]>([])
   const [users, setUsers] = useState<User[]>([])
