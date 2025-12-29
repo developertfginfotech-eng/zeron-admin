@@ -1900,7 +1900,12 @@ export default function GroupManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold mb-2">Your Permissions</h2>
-                <p className="text-blue-100">View your role and assigned permissions</p>
+                <p className="text-blue-100">
+                  {userRole === 'super_admin'
+                    ? 'You have full access to all system resources and permissions'
+                    : 'View your role and assigned permissions'
+                  }
+                </p>
               </div>
               <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
                 <p className="text-xs text-blue-100 mb-1">Your Role</p>
@@ -1909,14 +1914,64 @@ export default function GroupManagement() {
             </div>
           </div>
 
-          {/* User's Groups and Permissions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Group Memberships & Permissions</CardTitle>
-              <CardDescription>Groups you belong to and the permissions you have through them</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {groups.length > 0 ? (
+          {/* Super Admin - Show All Permissions */}
+          {userRole === 'super_admin' ? (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Crown className="h-6 w-6 text-yellow-500" />
+                  <div>
+                    <CardTitle>Super Admin - Full System Access</CardTitle>
+                    <CardDescription>You have unrestricted access to all resources and actions</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {PERMISSION_RESOURCES.map((category) => (
+                    <Card key={category.category} className="border-2 border-yellow-200 dark:border-yellow-800 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950 dark:to-amber-950">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base text-yellow-700 dark:text-yellow-300">
+                          {category.category}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {category.resources.map((resource) => (
+                            <div key={resource} className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                              <p className="font-semibold text-sm text-yellow-700 dark:text-yellow-300 mb-2">
+                                {resource}
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {ACTIONS.map((action) => (
+                                  <Badge key={action} className="text-xs bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700">
+                                    ✓ {action}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <div className="mt-4 p-4 bg-yellow-100 dark:bg-yellow-950 border-l-4 border-yellow-600 rounded">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    <span className="font-semibold">💡 Note:</span> As a Super Admin, you have full access to all system features and can perform any action without restrictions. You don't need to be assigned to groups.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            /* Regular Users - Show Group-Based Permissions */
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Group Memberships & Permissions</CardTitle>
+                <CardDescription>Groups you belong to and the permissions you have through them</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {groups.length > 0 ? (
                 <div className="space-y-4">
                   {groups.flatMap((group) => {
                     const userGroups = []
@@ -2012,6 +2067,7 @@ export default function GroupManagement() {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
