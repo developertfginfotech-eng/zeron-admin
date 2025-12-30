@@ -123,12 +123,12 @@ const PERMISSION_RESOURCES = [
   { category: "Operations", resources: ["operations:transactions"] },
   { category: "Properties", resources: ["properties:manage"] },
   { category: "Users", resources: ["users:manage"] },
-  { category: "Withdrawals", resources: ["withdrawals:view", "withdrawals:approve", "withdrawals:reject"] },
+  { category: "Withdrawals", resources: ["withdrawals"] },
   { category: "Documents", resources: ["documents:verify"] },
   { category: "Admin", resources: ["admin:groups", "admin:users"] },
 ]
 
-const ACTIONS = ["view", "create", "edit", "delete", "approve", "manage"]
+const ACTIONS = ["view", "create", "edit", "delete", "approve", "reject", "manage"]
 
 const TAB_OPTIONS = [
   { id: "overview", label: "Overview", icon: BarChart3 },
