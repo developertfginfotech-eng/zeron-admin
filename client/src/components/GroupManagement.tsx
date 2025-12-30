@@ -577,33 +577,18 @@ export default function GroupManagement() {
     return acc
   }, [])
 
-  // Debug: Log flattened groups
-  console.log('All Groups Flattened:', allGroupsFlattened)
-  console.log('Subgroups only:', allGroupsFlattened.filter(g => g.parentGroupId))
-
   // Filter groups based on user role for Team Members tab
   const managableGroups = useMemo(() => {
-    console.log('🔍 userRole:', userRole)
-    console.log('🔍 currentUserId:', currentUserId)
-    console.log('🔍 allGroupsFlattened length:', allGroupsFlattened.length)
-
     if (userRole === 'super_admin' || userRole === 'admin') {
-      console.log('✅ User is admin, returning all groups')
       // Admins can manage all groups
       return allGroupsFlattened
     } else if (userRole === 'team_lead') {
-      console.log('✅ User is team_lead, filtering groups')
       // Team leads can only manage subgroups where they are assigned as team lead
       return allGroupsFlattened.filter(group => group.teamLeadId === currentUserId)
     }
-    console.log('❌ User role not recognized or team_member, returning empty array')
     // Team members cannot manage any groups
     return []
   }, [allGroupsFlattened, userRole, currentUserId])
-
-  // Debug: Log managable groups
-  console.log('Managable Groups:', managableGroups)
-  console.log('Managable Subgroups:', managableGroups.filter(g => g.parentGroupId))
 
   // Auto-select group for team leads if they only have one manageable group
   useEffect(() => {
