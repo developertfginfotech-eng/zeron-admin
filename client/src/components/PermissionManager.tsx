@@ -14,6 +14,7 @@ interface PermissionManagerProps {
   allPermissions: Permission[]
   selectedPermissions: Permission[]
   onPermissionsChange: (permissions: Permission[]) => void
+  readOnly?: boolean
 }
 
 const ACTIONS = ['view', 'create', 'edit', 'delete', 'approve', 'reject', 'manage', 'export', 'verify', 'archive']
@@ -22,6 +23,7 @@ export default function PermissionManager({
   allPermissions,
   selectedPermissions,
   onPermissionsChange,
+  readOnly = false,
 }: PermissionManagerProps) {
   const [availableSearch, setAvailableSearch] = useState('')
   const [includedSearch, setIncludedSearch] = useState('')
@@ -91,8 +93,9 @@ export default function PermissionManager({
   return (
     <div className="space-y-4">
       {/* Permission Manager Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Available Permissions */}
+      <div className={`grid grid-cols-1 ${readOnly ? '' : 'lg:grid-cols-2'} gap-4`}>
+        {/* Available Permissions - Only show if not read-only */}
+        {!readOnly && (
         <Card className="border-2 border-gray-200 p-0 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200 px-4 py-3">
             <h3 className="font-semibold text-blue-900">Available Permissions ({filteredAvailable.length})</h3>
@@ -141,6 +144,7 @@ export default function PermissionManager({
             </div>
           </div>
         </Card>
+        )}
 
         {/* Included Permissions */}
         <Card className="border-2 border-green-200 p-0 overflow-hidden">
