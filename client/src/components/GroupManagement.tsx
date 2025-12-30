@@ -1726,6 +1726,25 @@ export default function GroupManagement() {
                       </select>
                     </div>
 
+                    {/* Team Lead Permissions */}
+                    <div className="space-y-2">
+                      <Label>Team Lead Permissions</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Customize permissions for this team lead (defaults to sub-group permissions)
+                      </p>
+                      <PermissionManager
+                        allPermissions={PERMISSION_RESOURCES.filter(cat => cat.resources).flatMap((cat) =>
+                          cat.resources.map((resource) => ({
+                            resource,
+                            actions: ACTIONS,
+                          }))
+                        )}
+                        selectedPermissions={memberPermissions}
+                        onPermissionsChange={setMemberPermissions}
+                        hideAvailable={true}
+                      />
+                    </div>
+
                     <Button
                       onClick={() => {
                         setMemberRole('team_lead')
@@ -1855,6 +1874,25 @@ export default function GroupManagement() {
                             </option>
                           ))}
                       </select>
+                    </div>
+
+                    {/* Member Permissions */}
+                    <div className="space-y-2">
+                      <Label>Member Permissions</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Customize permissions for this team member (defaults to sub-group permissions)
+                      </p>
+                      <PermissionManager
+                        allPermissions={PERMISSION_RESOURCES.filter(cat => cat.resources).flatMap((cat) =>
+                          cat.resources.map((resource) => ({
+                            resource,
+                            actions: ACTIONS,
+                          }))
+                        )}
+                        selectedPermissions={memberPermissions}
+                        onPermissionsChange={setMemberPermissions}
+                        hideAvailable={true}
+                      />
                     </div>
 
                     <Button
