@@ -1409,7 +1409,23 @@ export default function GroupManagement() {
                             </div>
                             <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
                               <p className="text-xs font-semibold text-muted-foreground mb-1">Members</p>
-                              <p className="text-lg font-bold text-blue-600">{subgroup.memberCount || 0}</p>
+                              <div className="flex gap-1 flex-wrap">
+                                {(() => {
+                                  const adminCount = subgroup.members?.filter((m: any) => m.userId?.role === 'admin').length || 0;
+                                  const teamLeadCount = subgroup.members?.filter((m: any) => m.userId?.role === 'team_lead').length || 0;
+                                  const teamMemberCount = subgroup.members?.filter((m: any) => m.userId?.role === 'team_member').length || 0;
+                                  const totalCount = subgroup.memberCount || 0;
+
+                                  return (
+                                    <>
+                                      {adminCount > 0 && <Badge variant="outline" className="bg-green-50 text-xs">{adminCount} Admin{adminCount > 1 ? 's' : ''}</Badge>}
+                                      {teamLeadCount > 0 && <Badge variant="outline" className="bg-blue-50 text-xs">{teamLeadCount} Lead{teamLeadCount > 1 ? 's' : ''}</Badge>}
+                                      {teamMemberCount > 0 && <Badge variant="outline" className="bg-purple-50 text-xs">{teamMemberCount} Member{teamMemberCount > 1 ? 's' : ''}</Badge>}
+                                      {totalCount === 0 && <Badge variant="outline" className="text-xs">0 members</Badge>}
+                                    </>
+                                  );
+                                })()}
+                              </div>
                             </div>
                             <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
                               <p className="text-xs font-semibold text-muted-foreground mb-1">Permissions</p>

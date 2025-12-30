@@ -92,6 +92,7 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}): Prom
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
     },
+    cache: 'no-store', // Prevent browser caching
   };
 
   const finalOptions: RequestInit = {
@@ -150,6 +151,7 @@ export const apiCallWithFiles = async (endpoint: string, formData: FormData, opt
       // Don't set Content-Type for FormData, let browser set it with boundary
       ...(token && { 'Authorization': `Bearer ${token}` }),
     },
+    cache: 'no-store', // Prevent browser caching
   };
 
   const finalOptions: RequestInit = {

@@ -1828,7 +1828,21 @@ export default function AdminDashboard() {
                               <p className="text-sm text-muted-foreground">{group.description || 'No description'}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge className="bg-blue-600">{teamMembers.length} Members</Badge>
+                              {(() => {
+                                const adminCount = adminUsers.filter(u => u.role === 'admin' && groupMemberIds.includes(u._id?.toString() || u._id)).length;
+                                const teamLeadCount = teamMembers.filter((m: any) => m.role === 'team_lead').length;
+                                const teamMemberCount = teamMembers.filter((m: any) => m.role === 'team_member').length;
+                                const totalCount = adminCount + teamLeadCount + teamMemberCount;
+
+                                return (
+                                  <div className="flex gap-1 flex-wrap">
+                                    {adminCount > 0 && <Badge className="bg-green-600 text-xs">{adminCount} Admin{adminCount > 1 ? 's' : ''}</Badge>}
+                                    {teamLeadCount > 0 && <Badge className="bg-blue-600 text-xs">{teamLeadCount} Team Lead{teamLeadCount > 1 ? 's' : ''}</Badge>}
+                                    {teamMemberCount > 0 && <Badge className="bg-purple-600 text-xs">{teamMemberCount} Member{teamMemberCount > 1 ? 's' : ''}</Badge>}
+                                    {totalCount === 0 && <Badge variant="outline" className="text-xs">0 members</Badge>}
+                                  </div>
+                                );
+                              })()}
                               <Button
                                 size="sm"
                                 variant="destructive"
