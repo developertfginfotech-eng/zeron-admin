@@ -41,6 +41,7 @@ const apiCall = async (endpoint: string, options?: RequestInit) => {
       Authorization: `Bearer ${token}`,
       ...options?.headers,
     },
+    cache: "no-store", // Prevent browser caching
     ...options,
   }
 
