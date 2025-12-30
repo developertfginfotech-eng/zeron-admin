@@ -453,13 +453,18 @@ export default function GroupManagement() {
         throw new Error("Sub-group not found")
       }
 
+      // Use custom member permissions if set, otherwise use subgroup's permissions
+      const permissionsToAssign = memberPermissions.length > 0
+        ? memberPermissions
+        : (subgroup.permissions || [])
+
       const response = await apiCall(
         `/api/admin/groups/${subgroupId}/add-member`,
         {
           method: "POST",
           body: JSON.stringify({
             userId,
-            memberPermissions: subgroup.permissions || [],
+            memberPermissions: permissionsToAssign,
           }),
         }
       )
@@ -471,6 +476,7 @@ export default function GroupManagement() {
         })
         setSelectedSubgroupForMember(null)
         setSelectedUserForGroup(null)
+        setMemberPermissions([])
 
         // Fetch fresh data to get updated member information
         fetchData()
@@ -1534,7 +1540,11 @@ export default function GroupManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setSelectedSubgroupForMember(null)}
+                                onClick={() => {
+                                  setSelectedSubgroupForMember(null)
+                                  setSelectedUserForGroup(null)
+                                  setMemberPermissions([])
+                                }}
                                 className="text-white hover:bg-white/20"
                               >
                                 <X className="h-5 w-5" />
@@ -1564,6 +1574,25 @@ export default function GroupManagement() {
                                 </select>
                               </div>
 
+                              {/* Member Permissions */}
+                              <div className="space-y-2">
+                                <Label className="text-sm font-semibold">Member Permissions</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Customize permissions for this member (defaults to sub-group permissions if none selected)
+                                </p>
+                                <PermissionManager
+                                  allPermissions={PERMISSION_RESOURCES.filter(cat => cat.resources).flatMap((cat) =>
+                                    cat.resources.map((resource) => ({
+                                      resource,
+                                      actions: ACTIONS,
+                                    }))
+                                  )}
+                                  selectedPermissions={memberPermissions.length > 0 ? memberPermissions : (subgroup.permissions || [])}
+                                  onPermissionsChange={setMemberPermissions}
+                                  hideAvailable={true}
+                                />
+                              </div>
+
                               <div className="flex gap-2">
                                 <Button
                                   onClick={() => {
@@ -1582,6 +1611,7 @@ export default function GroupManagement() {
                                   onClick={() => {
                                     setSelectedSubgroupForMember(null)
                                     setSelectedUserForGroup(null)
+                                    setMemberPermissions([])
                                   }}
                                 >
                                   Cancel
