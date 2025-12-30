@@ -196,6 +196,7 @@ export default function GroupManagement() {
     department: "other",
   })
   const [selectedSubgroupTeamLead, setSelectedSubgroupTeamLead] = useState<string>("")
+  const [subgroupPermissions, setSubgroupPermissions] = useState<Array<{ resource: string; actions: string[] }>>([])
 
   // Sub-group Management States
   const [editingSubgroupId, setEditingSubgroupId] = useState<string | null>(null)
@@ -375,6 +376,7 @@ export default function GroupManagement() {
           method: "POST",
           body: JSON.stringify({
             userId: selectedUserForGroup,
+            role: memberRole,
             memberPermissions: memberPermissions.length > 0 ? memberPermissions : selectedGroup.permissions,
           }),
         }
@@ -529,7 +531,7 @@ export default function GroupManagement() {
           description: subgroupFormData.description,
           department: subgroupFormData.department || parentGroup?.department,
           parentGroupId: selectedParentForSubgroup,
-          permissions: parentGroup?.permissions || [],
+          permissions: subgroupPermissions,
           ...(selectedSubgroupTeamLead && { teamLeadId: selectedSubgroupTeamLead }),
         }),
       })
@@ -543,6 +545,7 @@ export default function GroupManagement() {
         setSelectedParentForSubgroup(null)
         setSubgroupFormData({ displayName: "", description: "", department: "other" })
         setSelectedSubgroupTeamLead("")
+        setSubgroupPermissions([])
         fetchData()
       }
     } catch (err: any) {
@@ -594,6 +597,18 @@ export default function GroupManagement() {
       setMemberPermissions(managableGroups[0].permissions || [])
     }
   }, [managableGroups, userRole, selectedGroup])
+
+  // Initialize subgroup permissions when parent group is selected
+  useEffect(() => {
+    if (selectedParentForSubgroup) {
+      const parentGroup = filteredGroups.find(g => g._id === selectedParentForSubgroup)
+      if (parentGroup) {
+        setSubgroupPermissions(parentGroup.permissions || [])
+      }
+    } else {
+      setSubgroupPermissions([])
+    }
+  }, [selectedParentForSubgroup, filteredGroups])
 
   const groupStats = {
     total: filteredGroups.length,
@@ -1275,6 +1290,35 @@ export default function GroupManagement() {
                     </div>
                   )}
                 </div>
+
+                {/* Subgroup Permissions */}
+                {selectedParentForSubgroup && (
+                  <div className="p-4 bg-indigo-50 dark:bg-indigo-950 border-2 border-indigo-200 dark:border-indigo-800 rounded-lg">
+                    <Label className="text-sm font-semibold mb-2 block">
+                      Subgroup Permissions <span className="text-slate-400">(Customize)</span>
+                    </Label>
+                    <p className="text-xs text-indigo-700 dark:text-indigo-300 mb-3">
+                      Select specific permissions for this subgroup. By default, all parent permissions are selected. Remove permissions that this subgroup should NOT have.
+                    </p>
+                    <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border-2 border-dashed border-indigo-300 dark:border-indigo-700">
+                      <PermissionManager
+                        allPermissions={PERMISSION_RESOURCES.flatMap((cat) =>
+                          cat.resources.map((resource) => ({
+                            resource,
+                            actions: ACTIONS,
+                          }))
+                        )}
+                        selectedPermissions={subgroupPermissions}
+                        onPermissionsChange={setSubgroupPermissions}
+                      />
+                    </div>
+                    <div className="mt-3 p-3 bg-white dark:bg-slate-900 border-l-4 border-indigo-600 rounded">
+                      <p className="text-sm text-indigo-800 dark:text-indigo-200">
+                        <span className="font-semibold">Selected Permissions:</span> {subgroupPermissions.length > 0 ? subgroupPermissions.length : "No permissions"} resource{subgroupPermissions.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <Button
                   type="submit"
