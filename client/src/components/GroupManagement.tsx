@@ -837,9 +837,23 @@ export default function GroupManagement() {
                             )}
                           </div>
                         </div>
-                        <div className="flex gap-2 mt-3">
+                        <div className="flex gap-2 mt-3 flex-wrap">
                           <Badge>{group.department}</Badge>
-                          <Badge variant="outline">{group.memberCount} members</Badge>
+                          {(() => {
+                            const adminCount = group.members?.filter((m: any) => m.userId?.role === 'admin').length || 0
+                            const teamLeadCount = group.members?.filter((m: any) => m.userId?.role === 'team_lead').length || 0
+                            const teamMemberCount = group.members?.filter((m: any) => m.userId?.role === 'team_member').length || 0
+                            const totalCount = group.memberCount || 0
+
+                            return (
+                              <>
+                                {adminCount > 0 && <Badge variant="outline" className="bg-green-50">{adminCount} Admin{adminCount > 1 ? 's' : ''}</Badge>}
+                                {teamLeadCount > 0 && <Badge variant="outline" className="bg-blue-50">{teamLeadCount} Team Lead{teamLeadCount > 1 ? 's' : ''}</Badge>}
+                                {teamMemberCount > 0 && <Badge variant="outline" className="bg-purple-50">{teamMemberCount} Member{teamMemberCount > 1 ? 's' : ''}</Badge>}
+                                {totalCount === 0 && <Badge variant="outline">0 members</Badge>}
+                              </>
+                            )
+                          })()}
                           {group.subGroups && group.subGroups.length > 0 && (
                             <Badge variant="secondary">{group.subGroups.length} sub-groups</Badge>
                           )}

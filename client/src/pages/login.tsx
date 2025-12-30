@@ -212,18 +212,6 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 </div>
               </div>
 
-              {/* Register Link */}
-              <p className="text-sm text-muted-foreground">
-                Super Admin?{" "}
-                <Button
-                  variant="link"
-                  className="p-0 h-auto font-semibold text-primary hover:underline"
-                  onClick={() => navigate("/admin/register")}
-                >
-                  Register New Admin
-                </Button>
-              </p>
-
               <p className="text-xs text-muted-foreground">
                 Contact your system administrator if you need access or have forgotten your credentials.
               </p>
