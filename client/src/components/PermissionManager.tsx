@@ -78,7 +78,10 @@ export default function PermissionManager({
   }
 
   const handleToggleAction = (resource: string, action: string) => {
-    const currentActions = selectedActions[resource] || []
+    // Get current permission's actions from the actual permissions, not just from state
+    const currentPermission = deduplicatedSelectedPermissions.find(p => p.resource === resource)
+    const currentActions = selectedActions[resource] || currentPermission?.actions || []
+
     const newActions = currentActions.includes(action)
       ? currentActions.filter((a) => a !== action)
       : [...currentActions, action]
