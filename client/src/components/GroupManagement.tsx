@@ -68,9 +68,15 @@ interface GroupData {
   permissions: Permission[]
   members: Array<{
     _id: string
-    firstName: string
-    lastName: string
-    email: string
+    userId?: {
+      _id: string
+      firstName: string
+      lastName: string
+      email: string
+    }
+    firstName?: string
+    lastName?: string
+    email?: string
     memberPermissions?: Permission[]
   }>
   memberCount: number
@@ -1758,29 +1764,37 @@ export default function GroupManagement() {
                     <CardContent>
                       {selectedGroup.members && selectedGroup.members.length > 0 ? (
                         <div className="space-y-2">
-                          {selectedGroup.members.map((member) => (
-                            <div key={member._id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-between gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                  <AvatarFallback className="text-xs">
-                                    {member.userId?.firstName?.[0]}{member.userId?.lastName?.[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-sm truncate">{member.userId?.firstName} {member.userId?.lastName}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{member.userId?.email}</p>
+                          {selectedGroup.members.map((member) => {
+                            const isTeamLead = member.userId?.role === 'team_lead' || selectedGroup.teamLeadId === member.userId?._id
+                            return (
+                              <div key={member._id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-between gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <Avatar className="h-8 w-8 flex-shrink-0">
+                                    <AvatarFallback className="text-xs">
+                                      {member.userId?.firstName?.[0]}{member.userId?.lastName?.[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium text-sm truncate">{member.userId?.firstName} {member.userId?.lastName}</p>
+                                      <Badge variant={isTeamLead ? "default" : "secondary"} className={`text-xs flex-shrink-0 ${isTeamLead ? 'bg-green-600' : 'bg-purple-600'}`}>
+                                        {isTeamLead ? 'Team Lead' : 'Team Member'}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">{member.userId?.email}</p>
+                                  </div>
                                 </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveUserFromGroup(selectedGroup._id, member.userId?._id || member._id)}
+                                  className="text-destructive hover:text-destructive hover:bg-red-100 dark:hover:bg-red-950 flex-shrink-0"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveUserFromGroup(selectedGroup._id, member.userId?._id)}
-                                className="text-destructive hover:text-destructive hover:bg-red-100 dark:hover:bg-red-950 flex-shrink-0"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       ) : (
                         <p className="text-center py-8 text-muted-foreground">No team leads added yet</p>
@@ -1908,29 +1922,37 @@ export default function GroupManagement() {
                     <CardContent>
                       {selectedGroup.members && selectedGroup.members.length > 0 ? (
                         <div className="space-y-2">
-                          {selectedGroup.members.map((member) => (
-                            <div key={member._id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-between gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                  <AvatarFallback className="text-xs">
-                                    {member.userId?.firstName?.[0]}{member.userId?.lastName?.[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-sm truncate">{member.userId?.firstName} {member.userId?.lastName}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{member.userId?.email}</p>
+                          {selectedGroup.members.map((member) => {
+                            const isTeamLead = member.userId?.role === 'team_lead' || selectedGroup.teamLeadId === member.userId?._id
+                            return (
+                              <div key={member._id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-between gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <Avatar className="h-8 w-8 flex-shrink-0">
+                                    <AvatarFallback className="text-xs">
+                                      {member.userId?.firstName?.[0]}{member.userId?.lastName?.[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium text-sm truncate">{member.userId?.firstName} {member.userId?.lastName}</p>
+                                      <Badge variant={isTeamLead ? "default" : "secondary"} className={`text-xs flex-shrink-0 ${isTeamLead ? 'bg-green-600' : 'bg-purple-600'}`}>
+                                        {isTeamLead ? 'Team Lead' : 'Team Member'}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">{member.userId?.email}</p>
+                                  </div>
                                 </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveUserFromGroup(selectedGroup._id, member.userId?._id || member._id)}
+                                  className="text-destructive hover:text-destructive hover:bg-red-100 dark:hover:bg-red-950 flex-shrink-0"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveUserFromGroup(selectedGroup._id, member.userId?._id)}
-                                className="text-destructive hover:text-destructive hover:bg-red-100 dark:hover:bg-red-950 flex-shrink-0"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       ) : (
                         <p className="text-center py-8 text-muted-foreground">No team members added yet</p>
