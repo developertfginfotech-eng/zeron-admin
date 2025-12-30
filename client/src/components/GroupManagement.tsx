@@ -1310,6 +1310,7 @@ export default function GroupManagement() {
                         )}
                         selectedPermissions={subgroupPermissions}
                         onPermissionsChange={setSubgroupPermissions}
+                        hideAvailable={true}
                       />
                     </div>
                     <div className="mt-3 p-3 bg-white dark:bg-slate-900 border-l-4 border-indigo-600 rounded">

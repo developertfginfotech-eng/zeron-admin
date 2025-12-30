@@ -15,6 +15,7 @@ interface PermissionManagerProps {
   selectedPermissions: Permission[]
   onPermissionsChange: (permissions: Permission[]) => void
   readOnly?: boolean
+  hideAvailable?: boolean
 }
 
 const ACTIONS = ['view', 'create', 'edit', 'delete', 'approve', 'reject', 'manage', 'export', 'verify', 'archive']
@@ -24,6 +25,7 @@ export default function PermissionManager({
   selectedPermissions,
   onPermissionsChange,
   readOnly = false,
+  hideAvailable = false,
 }: PermissionManagerProps) {
   const [availableSearch, setAvailableSearch] = useState('')
   const [includedSearch, setIncludedSearch] = useState('')
@@ -93,9 +95,9 @@ export default function PermissionManager({
   return (
     <div className="space-y-4">
       {/* Permission Manager Container */}
-      <div className={`grid grid-cols-1 ${readOnly ? '' : 'lg:grid-cols-2'} gap-4`}>
-        {/* Available Permissions - Only show if not read-only */}
-        {!readOnly && (
+      <div className={`grid grid-cols-1 ${(readOnly || hideAvailable) ? '' : 'lg:grid-cols-2'} gap-4`}>
+        {/* Available Permissions - Only show if not read-only and not hideAvailable */}
+        {!readOnly && !hideAvailable && (
         <Card className="border-2 border-gray-200 p-0 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200 px-4 py-3">
             <h3 className="font-semibold text-blue-900">Available Permissions ({filteredAvailable.length})</h3>
@@ -150,7 +152,7 @@ export default function PermissionManager({
         <Card className="border-2 border-green-200 p-0 overflow-hidden">
           <div className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200 px-4 py-3">
             <h3 className="font-semibold text-green-900">Included Permissions ({filteredIncluded.length})</h3>
-            <p className="text-xs text-green-700">Configure actions and remove with -</p>
+            <p className="text-xs text-green-700">{readOnly ? 'View-only mode' : 'Configure actions and remove with -'}</p>
           </div>
 
           <div className="p-4 space-y-2">
@@ -175,14 +177,16 @@ export default function PermissionManager({
                     {/* Permission Header */}
                     <div className="flex items-center justify-between mb-2">
                       <p className="font-medium text-sm text-green-900">{perm.resource}</p>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0 text-red-600 hover:bg-red-100"
-                        onClick={() => handleRemovePermission(perm.resource)}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
+                      {!readOnly && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-red-600 hover:bg-red-100"
+                          onClick={() => handleRemovePermission(perm.resource)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
 
                     {/* Actions Selector */}
@@ -191,12 +195,12 @@ export default function PermissionManager({
                         <Badge
                           key={action}
                           variant="outline"
-                          className={`cursor-pointer transition-all ${
+                          className={`${readOnly ? '' : 'cursor-pointer'} transition-all ${
                             (selectedActions[perm.resource] || perm.actions)?.includes(action)
-                              ? 'bg-green-600 text-white border-green-600 hover:bg-green-700'
-                              : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
+                              ? `bg-green-600 text-white border-green-600 ${!readOnly && 'hover:bg-green-700'}`
+                              : `bg-white text-gray-600 border-gray-300 ${!readOnly && 'hover:bg-gray-100'}`
                           }`}
-                          onClick={() => handleToggleAction(perm.resource, action)}
+                          onClick={readOnly ? undefined : () => handleToggleAction(perm.resource, action)}
                         >
                           {action}
                         </Badge>
