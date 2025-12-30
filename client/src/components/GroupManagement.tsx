@@ -1664,23 +1664,23 @@ export default function GroupManagement() {
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="text-lg">Add Team Lead</CardTitle>
-                <CardDescription>Assign admin users to groups</CardDescription>
+                <CardDescription>Assign team leads to sub-groups</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="groupSelect">Select Group</Label>
+                  <Label htmlFor="groupSelect">Select Sub-group</Label>
                   <select
                     id="groupSelect"
                     value={selectedGroup?._id || ""}
                     onChange={(e) => {
-                      const group = filteredGroups.find(g => g._id === e.target.value)
+                      const group = allGroupsFlattened.find(g => g._id === e.target.value)
                       setSelectedGroup(group || null)
                       setMemberPermissions(group?.permissions || [])
                     }}
                     className="w-full px-3 py-2 border rounded-md text-sm mt-2"
                   >
-                    <option value="">Choose a group...</option>
-                    {filteredGroups.map((group) => (
+                    <option value="">Choose a sub-group...</option>
+                    {allGroupsFlattened.filter(g => g.parentGroupId).map((group) => (
                       <option key={group._id} value={group._id}>
                         {group.displayName}
                       </option>
@@ -1771,7 +1771,7 @@ export default function GroupManagement() {
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">Select a group to view and manage team leads</p>
+                    <p className="text-muted-foreground">Select a sub-group to view and manage team leads</p>
                   </CardContent>
                 </Card>
               )}
