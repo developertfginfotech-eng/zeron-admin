@@ -120,9 +120,10 @@ const DEPARTMENTS = [
 const PERMISSION_RESOURCES = [
   { category: "KYC", resources: ["kyc:verification", "kyc:approval"] },
   { category: "Finance", resources: ["finance:reports", "finance:investments"] },
-  { category: "Operations", resources: ["operations:properties", "operations:transactions"] },
+  { category: "Operations", resources: ["operations:transactions"] },
   { category: "Properties", resources: ["properties:manage"] },
   { category: "Users", resources: ["users:manage"] },
+  { category: "Withdrawals", resources: ["withdrawals:view", "withdrawals:approve", "withdrawals:reject"] },
   { category: "Documents", resources: ["documents:verify"] },
   { category: "Admin", resources: ["admin:groups", "admin:users"] },
 ]
