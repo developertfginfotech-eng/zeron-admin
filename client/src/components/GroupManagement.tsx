@@ -175,7 +175,6 @@ export default function GroupManagement() {
     displayName: "",
     description: "",
     department: "other",
-    parentGroupId: "",
   })
   const [selectedPermissions, setSelectedPermissions] = useState<Array<{ resource: string; actions: string[] }>>([])
   const [selectedGroupAdmin, setSelectedGroupAdmin] = useState<string>("")
@@ -305,7 +304,6 @@ export default function GroupManagement() {
           description: createFormData.description,
           department: createFormData.department,
           permissions: selectedPermissions,
-          ...(createFormData.parentGroupId && { parentGroupId: createFormData.parentGroupId }),
           ...(selectedGroupAdmin && { groupAdminId: selectedGroupAdmin }),
         }),
       })
@@ -320,7 +318,6 @@ export default function GroupManagement() {
           displayName: "",
           description: "",
           department: "other",
-          parentGroupId: "",
         })
         setSelectedPermissions([])
         setSelectedGroupAdmin("")
@@ -1025,108 +1022,57 @@ export default function GroupManagement() {
               </CardContent>
             </Card>
 
-            {/* Sub-group Configuration Card */}
-            <Card className="border-2 border-purple-100 dark:border-purple-900">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 rounded-t-lg">
+            {/* Assign Group Admin Card */}
+            <Card className="border-2 border-green-100 dark:border-green-900">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 rounded-t-lg">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold">2</div>
-                  Sub-group Configuration
+                  <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center text-sm font-bold">2</div>
+                  Assign Group Admin
                 </CardTitle>
-                <CardDescription>Make this a sub-group of an existing group (optional)</CardDescription>
+                <CardDescription>Select an admin who will manage this group and create sub-groups</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <div>
-                  <Label htmlFor="parentGroup" className="text-sm font-semibold mb-2 block">
-                    Parent Group <span className="text-slate-400">(Optional)</span>
+                  <Label htmlFor="groupAdmin" className="text-sm font-semibold mb-2 block">
+                    Group Admin <span className="text-slate-400">(Optional)</span>
                   </Label>
                   <select
-                    id="parentGroup"
-                    value={createFormData.parentGroupId}
-                    onChange={(e) =>
-                      setCreateFormData({ ...createFormData, parentGroupId: e.target.value })
-                    }
-                    className="w-full px-4 py-2.5 border-2 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-900"
+                    id="groupAdmin"
+                    value={selectedGroupAdmin}
+                    onChange={(e) => setSelectedGroupAdmin(e.target.value)}
+                    className="w-full px-4 py-2.5 border-2 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:border-green-500 focus:outline-none bg-white dark:bg-slate-900"
                   >
-                    <option value="">No parent group - Create as root group</option>
-                    {filteredGroups
-                      .filter((g) => !g.parentGroupId)
-                      .map((group) => (
-                        <option key={group._id} value={group._id}>
-                          {group.displayName} ({group.department})
+                    <option value="">No admin assigned - You can assign later</option>
+                    {users
+                      .filter((u: any) => u.role === 'admin' && u.status === 'active')
+                      .map((user) => (
+                        <option key={user._id} value={user._id}>
+                          {user.firstName} {user.lastName} ({user.email})
                         </option>
                       ))}
                   </select>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                    💡 Sub-groups inherit permissions from their parent group and can override them
+                    💡 The assigned admin will have full control over this group and can create sub-groups
                   </p>
                 </div>
 
-                {createFormData.parentGroupId && (
-                  <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-950 border-l-4 border-purple-600 rounded">
-                    <p className="text-sm text-purple-800 dark:text-purple-200">
-                      <span className="font-semibold">✓ Sub-group Mode:</span> This group will be created as a child of{" "}
-                      <span className="font-semibold">
-                        {filteredGroups.find((g) => g._id === createFormData.parentGroupId)?.displayName}
-                      </span>
+                {selectedGroupAdmin && (
+                  <div className="mt-4 p-4 bg-green-50 dark:bg-green-950 border-l-4 border-green-600 rounded">
+                    <p className="text-sm text-green-800 dark:text-green-200">
+                      <span className="font-semibold">✓ Group Admin Selected:</span>{" "}
+                      {users.find((u: any) => u._id === selectedGroupAdmin)?.firstName}{" "}
+                      {users.find((u: any) => u._id === selectedGroupAdmin)?.lastName} will manage this group
                     </p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Assign Group Admin Card */}
-            {!createFormData.parentGroupId && (
-              <Card className="border-2 border-green-100 dark:border-green-900">
-                <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 rounded-t-lg">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center text-sm font-bold">3</div>
-                    Assign Group Admin
-                  </CardTitle>
-                  <CardDescription>Select an admin who will manage this group and create sub-groups</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div>
-                    <Label htmlFor="groupAdmin" className="text-sm font-semibold mb-2 block">
-                      Group Admin <span className="text-slate-400">(Optional)</span>
-                    </Label>
-                    <select
-                      id="groupAdmin"
-                      value={selectedGroupAdmin}
-                      onChange={(e) => setSelectedGroupAdmin(e.target.value)}
-                      className="w-full px-4 py-2.5 border-2 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:border-green-500 focus:outline-none bg-white dark:bg-slate-900"
-                    >
-                      <option value="">No admin assigned - You can assign later</option>
-                      {users
-                        .filter((u: any) => u.role === 'admin' && u.status === 'active')
-                        .map((user) => (
-                          <option key={user._id} value={user._id}>
-                            {user.firstName} {user.lastName} ({user.email})
-                          </option>
-                        ))}
-                    </select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                      💡 The assigned admin will have full control over this group and can create sub-groups
-                    </p>
-                  </div>
-
-                  {selectedGroupAdmin && (
-                    <div className="mt-4 p-4 bg-green-50 dark:bg-green-950 border-l-4 border-green-600 rounded">
-                      <p className="text-sm text-green-800 dark:text-green-200">
-                        <span className="font-semibold">✓ Group Admin Selected:</span>{" "}
-                        {users.find((u: any) => u._id === selectedGroupAdmin)?.firstName}{" "}
-                        {users.find((u: any) => u._id === selectedGroupAdmin)?.lastName} will manage this group
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Permissions Card */}
             <Card className="border-2 border-indigo-100 dark:border-indigo-900">
               <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-t-lg">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold">{!createFormData.parentGroupId ? '4' : '3'}</div>
+                  <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold">3</div>
                   Assign Permissions
                 </CardTitle>
                 <CardDescription>Select which resources and actions this group can access</CardDescription>
@@ -1171,7 +1117,6 @@ export default function GroupManagement() {
                     displayName: "",
                     description: "",
                     department: "other",
-                    parentGroupId: "",
                   })
                   setSelectedPermissions([])
                   setSelectedGroupAdmin("")
