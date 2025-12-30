@@ -577,6 +577,10 @@ export default function GroupManagement() {
     return acc
   }, [])
 
+  // Debug: Log flattened groups
+  console.log('All Groups Flattened:', allGroupsFlattened)
+  console.log('Subgroups only:', allGroupsFlattened.filter(g => g.parentGroupId))
+
   // Filter groups based on user role for Team Members tab
   const managableGroups = useMemo(() => {
     if (userRole === 'super_admin' || userRole === 'admin') {
@@ -1599,6 +1603,7 @@ export default function GroupManagement() {
                                     subgroup.permissions || []
                                   )}
                                   onPermissionsChange={setEditingSubgroupPermissions}
+                                  hideAvailable={true}
                                 />
                               </div>
 
