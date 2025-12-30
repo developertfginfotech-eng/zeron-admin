@@ -1763,18 +1763,18 @@ export default function GroupManagement() {
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <Avatar className="h-8 w-8 flex-shrink-0">
                                   <AvatarFallback className="text-xs">
-                                    {member.firstName?.[0]}{member.lastName?.[0]}
+                                    {member.userId?.firstName?.[0]}{member.userId?.lastName?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-sm truncate">{member.firstName} {member.lastName}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                                  <p className="font-medium text-sm truncate">{member.userId?.firstName} {member.userId?.lastName}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{member.userId?.email}</p>
                                 </div>
                               </div>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleRemoveUserFromGroup(selectedGroup._id, member._id)}
+                                onClick={() => handleRemoveUserFromGroup(selectedGroup._id, member.userId?._id)}
                                 className="text-destructive hover:text-destructive hover:bg-red-100 dark:hover:bg-red-950 flex-shrink-0"
                               >
                                 <X className="h-4 w-4" />
@@ -1913,18 +1913,18 @@ export default function GroupManagement() {
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <Avatar className="h-8 w-8 flex-shrink-0">
                                   <AvatarFallback className="text-xs">
-                                    {member.firstName?.[0]}{member.lastName?.[0]}
+                                    {member.userId?.firstName?.[0]}{member.userId?.lastName?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-sm truncate">{member.firstName} {member.lastName}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                                  <p className="font-medium text-sm truncate">{member.userId?.firstName} {member.userId?.lastName}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{member.userId?.email}</p>
                                 </div>
                               </div>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleRemoveUserFromGroup(selectedGroup._id, member._id)}
+                                onClick={() => handleRemoveUserFromGroup(selectedGroup._id, member.userId?._id)}
                                 className="text-destructive hover:text-destructive hover:bg-red-100 dark:hover:bg-red-950 flex-shrink-0"
                               >
                                 <X className="h-4 w-4" />
