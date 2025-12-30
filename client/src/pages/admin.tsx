@@ -176,6 +176,11 @@ interface GroupData {
   description?: string
   permissions: Permission[]
   memberCount: number
+  members?: Array<{
+    _id: string
+    userId?: any
+  }>
+  parentGroupId?: string
   isActive: boolean
   defaultRole?: {
     _id: string
@@ -1977,7 +1982,21 @@ export default function AdminDashboard() {
                                       <p className="text-sm text-muted-foreground ml-5">{subgroup.description || 'No description'}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <Badge className="bg-purple-600">{subgroupTeamMembers.length} Members</Badge>
+                                      {(() => {
+                                        const adminCount = adminUsers.filter(u => u.role === 'admin' && subgroupMemberIds.includes(u._id?.toString() || u._id)).length;
+                                        const teamLeadCount = subgroupTeamMembers.filter((m: any) => m.role === 'team_lead').length;
+                                        const teamMemberCount = subgroupTeamMembers.filter((m: any) => m.role === 'team_member').length;
+                                        const totalCount = adminCount + teamLeadCount + teamMemberCount;
+
+                                        return (
+                                          <div className="flex gap-1 flex-wrap">
+                                            {adminCount > 0 && <Badge className="bg-green-600 text-xs">{adminCount} Admin{adminCount > 1 ? 's' : ''}</Badge>}
+                                            {teamLeadCount > 0 && <Badge className="bg-blue-600 text-xs">{teamLeadCount} Team Lead{teamLeadCount > 1 ? 's' : ''}</Badge>}
+                                            {teamMemberCount > 0 && <Badge className="bg-purple-600 text-xs">{teamMemberCount} Member{teamMemberCount > 1 ? 's' : ''}</Badge>}
+                                            {totalCount === 0 && <Badge variant="outline" className="text-xs">0 members</Badge>}
+                                          </div>
+                                        );
+                                      })()}
                                       <Button
                                         size="sm"
                                         variant="destructive"
