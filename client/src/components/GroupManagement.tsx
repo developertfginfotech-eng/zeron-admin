@@ -615,7 +615,7 @@ export default function GroupManagement() {
     } else {
       setSubgroupPermissions([])
     }
-  }, [selectedParentForSubgroup, filteredGroups])
+  }, [selectedParentForSubgroup])
 
   const groupStats = {
     total: filteredGroups.length,
