@@ -1788,11 +1788,11 @@ export default function GroupManagement() {
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="text-lg">Add Team Member</CardTitle>
-                <CardDescription>Assign sub-admin users to groups</CardDescription>
+                <CardDescription>Assign team members to sub-groups</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="groupSelectMember">Select Group</Label>
+                  <Label htmlFor="groupSelectMember">Select Sub-group</Label>
                   <select
                     id="groupSelectMember"
                     value={selectedGroup?._id || ""}
@@ -1802,18 +1802,18 @@ export default function GroupManagement() {
                       setMemberPermissions(group?.permissions || [])
                     }}
                     className="w-full px-3 py-2 border rounded-md text-sm mt-2"
-                    disabled={managableGroups.length === 0}
+                    disabled={managableGroups.filter(g => g.parentGroupId).length === 0}
                   >
                     <option value="">
-                      {managableGroups.length === 0
-                        ? "No groups available"
-                        : managableGroups.length === 1 && userRole === 'team_lead'
-                        ? "Your assigned group"
-                        : "Choose a group..."}
+                      {managableGroups.filter(g => g.parentGroupId).length === 0
+                        ? "No sub-groups available"
+                        : managableGroups.filter(g => g.parentGroupId).length === 1 && userRole === 'team_lead'
+                        ? "Your assigned sub-group"
+                        : "Choose a sub-group..."}
                     </option>
-                    {managableGroups.map((group) => (
+                    {managableGroups.filter(g => g.parentGroupId).map((group) => (
                       <option key={group._id} value={group._id}>
-                        {group.parentGroupId ? `  ↳ ${group.displayName}` : group.displayName}
+                        {group.displayName}
                       </option>
                     ))}
                   </select>
@@ -1902,7 +1902,7 @@ export default function GroupManagement() {
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">Select a group to view and manage team members</p>
+                    <p className="text-muted-foreground">Select a sub-group to view and manage team members</p>
                   </CardContent>
                 </Card>
               )}
