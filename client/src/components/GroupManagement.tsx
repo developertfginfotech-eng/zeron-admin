@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -83,6 +83,8 @@ interface GroupData {
     name: string
     displayName: string
   }
+  teamLeadId?: string
+  groupAdminId?: string
 }
 
 interface User {
@@ -571,6 +573,27 @@ export default function GroupManagement() {
     }
     return acc
   }, [])
+
+  // Filter groups based on user role for Team Members tab
+  const managableGroups = useMemo(() => {
+    if (userRole === 'super_admin' || userRole === 'admin') {
+      // Admins can manage all groups
+      return allGroupsFlattened
+    } else if (userRole === 'team_lead') {
+      // Team leads can only manage subgroups where they are assigned as team lead
+      return allGroupsFlattened.filter(group => group.teamLeadId === currentUserId)
+    }
+    // Team members cannot manage any groups
+    return []
+  }, [allGroupsFlattened, userRole, currentUserId])
+
+  // Auto-select group for team leads if they only have one manageable group
+  useEffect(() => {
+    if (userRole === 'team_lead' && managableGroups.length === 1 && !selectedGroup) {
+      setSelectedGroup(managableGroups[0])
+      setMemberPermissions(managableGroups[0].permissions || [])
+    }
+  }, [managableGroups, userRole, selectedGroup])
 
   const groupStats = {
     total: filteredGroups.length,
@@ -1730,14 +1753,21 @@ export default function GroupManagement() {
                     id="groupSelectMember"
                     value={selectedGroup?._id || ""}
                     onChange={(e) => {
-                      const group = allGroupsFlattened.find(g => g._id === e.target.value)
+                      const group = managableGroups.find(g => g._id === e.target.value)
                       setSelectedGroup(group || null)
                       setMemberPermissions(group?.permissions || [])
                     }}
                     className="w-full px-3 py-2 border rounded-md text-sm mt-2"
+                    disabled={managableGroups.length === 0}
                   >
-                    <option value="">Choose a group...</option>
-                    {allGroupsFlattened.map((group) => (
+                    <option value="">
+                      {managableGroups.length === 0
+                        ? "No groups available"
+                        : managableGroups.length === 1 && userRole === 'team_lead'
+                        ? "Your assigned group"
+                        : "Choose a group..."}
+                    </option>
+                    {managableGroups.map((group) => (
                       <option key={group._id} value={group._id}>
                         {group.parentGroupId ? `  ↳ ${group.displayName}` : group.displayName}
                       </option>
