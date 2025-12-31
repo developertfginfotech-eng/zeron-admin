@@ -1189,13 +1189,13 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-50 to-green-100">
+              <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-green-900">Total Users</CardTitle>
-                  <Users className="h-4 w-4 text-green-600" />
+                  <CardTitle className="text-sm font-medium text-yellow-900">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-yellow-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{dashboardStats.totalUsers || 0}</div>
+                  <div className="text-2xl font-bold text-yellow-600">{dashboardStats.totalUsers || 0}</div>
                   <p className="text-xs text-muted-foreground">
                     {dashboardStats.pendingKyc || 0} pending KYC
                   </p>
@@ -1278,7 +1278,7 @@ export default function AdminDashboard() {
                   <p className="text-sm text-muted-foreground mt-1">Active Teams</p>
                 </div>
                 <div className="text-center p-4">
-                  <p className="text-3xl font-bold text-green-600">{adminUsers.length}</p>
+                  <p className="text-3xl font-bold text-yellow-600">{adminUsers.length}</p>
                   <p className="text-sm text-muted-foreground mt-1">Total Staff</p>
                 </div>
                 <div className="text-center p-4">
@@ -1358,10 +1358,10 @@ export default function AdminDashboard() {
                   </Card>
 
                   {/* Team Lead */}
-                  <Card className="border-2 border-green-300 bg-green-50">
+                  <Card className="border-2 border-green-300 bg-yellow-50">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <Users className="h-4 w-4 text-green-600" />
+                        <Users className="h-4 w-4 text-yellow-600" />
                         Team Lead
                       </CardTitle>
                     </CardHeader>
@@ -1412,8 +1412,8 @@ export default function AdminDashboard() {
                       <p className="text-xs text-muted-foreground mt-1">Admin: KYC Officer</p>
                       <p className="text-xs text-muted-foreground">Work: Verify users, review documents</p>
                     </div>
-                    <div className="p-3 bg-green-50 rounded border border-green-200">
-                      <p className="font-medium text-green-900">Property Management Team</p>
+                    <div className="p-3 bg-yellow-50 rounded border border-green-200">
+                      <p className="font-medium text-yellow-900">Property Management Team</p>
                       <p className="text-xs text-muted-foreground mt-1">Admin: Property Manager</p>
                       <p className="text-xs text-muted-foreground">Work: Approve listings, manage properties</p>
                     </div>
@@ -1456,16 +1456,16 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-green-200">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-green-900 flex items-center gap-1">
+                <CardTitle className="text-sm font-medium text-yellow-900 flex items-center gap-1">
                   <Users className="h-4 w-4" />
                   Team Leads
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-600">{adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin').length}</div>
-                <p className="text-xs text-green-600 mt-1">Group Managers</p>
+                <div className="text-3xl font-bold text-yellow-600">{adminUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin').length}</div>
+                <p className="text-xs text-yellow-600 mt-1">Group Managers</p>
               </CardContent>
             </Card>
 
@@ -1577,7 +1577,7 @@ export default function AdminDashboard() {
                                     variant="outline"
                                     className={
                                       admin.status === 'active'
-                                        ? 'bg-green-100 text-green-700'
+                                        ? 'bg-yellow-100 text-yellow-700'
                                         : 'bg-yellow-100 text-yellow-700'
                                     }
                                   >
@@ -1689,14 +1689,14 @@ export default function AdminDashboard() {
                           {/* Permissions */}
                           <div>
                             <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <CheckCircle className="h-4 w-4 text-yellow-600" />
                               Team Permissions
                             </h5>
                             {group.permissions && group.permissions.length > 0 ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {group.permissions.map((perm: any, idx: number) => (
-                                  <div key={idx} className="text-xs bg-green-50 border border-green-200 rounded px-2 py-1 flex items-start gap-1">
-                                    <span className="text-green-600 mt-0.5">✓</span>
+                                  <div key={idx} className="text-xs bg-yellow-50 border border-green-200 rounded px-2 py-1 flex items-start gap-1">
+                                    <span className="text-yellow-600 mt-0.5">✓</span>
                                     <span>{perm.resource}: {perm.actions.join(', ')}</span>
                                   </div>
                                 ))}
@@ -1758,15 +1758,15 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-green-200">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-green-900 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-yellow-900 flex items-center gap-2">
                   <UserCog className="h-4 w-4" />
                   Team Leads (Admins)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-600">{adminUsers.filter(u => u.role === 'admin').length}</div>
+                <div className="text-3xl font-bold text-yellow-600">{adminUsers.filter(u => u.role === 'admin').length}</div>
               </CardContent>
             </Card>
 
@@ -1863,8 +1863,8 @@ export default function AdminDashboard() {
 
                           {/* Team Lead Section */}
                           {teamLead && (
-                            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                              <p className="text-xs font-semibold text-green-900 mb-2">👨‍💼 Team Lead</p>
+                            <div className="mb-4 p-3 bg-yellow-50 border border-green-200 rounded-lg">
+                              <p className="text-xs font-semibold text-yellow-900 mb-2">👨‍💼 Team Lead</p>
                               <div className="flex items-center gap-3">
                                 <Avatar>
                                   <AvatarFallback>
@@ -2012,8 +2012,8 @@ export default function AdminDashboard() {
 
                                   {/* Subgroup Team Lead Section */}
                                   {subgroupTeamLead && (
-                                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg ml-5">
-                                      <p className="text-xs font-semibold text-green-900 mb-2">👨‍💼 Team Lead</p>
+                                    <div className="mb-4 p-3 bg-yellow-50 border border-green-200 rounded-lg ml-5">
+                                      <p className="text-xs font-semibold text-yellow-900 mb-2">👨‍💼 Team Lead</p>
                                       <div className="flex items-center gap-3">
                                         <Avatar>
                                           <AvatarFallback>
@@ -2189,7 +2189,7 @@ export default function AdminDashboard() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span>Two-factor Authentication</span>
-                  <Badge variant="outline" className="text-green-600">
+                  <Badge variant="outline" className="text-yellow-600">
                     {securitySettings?.authentication?.twoFactorAuthentication?.status || 'Enabled'}
                   </Badge>
                 </div>
@@ -2201,7 +2201,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Password Policy</span>
-                  <Badge variant="outline" className="text-green-600">
+                  <Badge variant="outline" className="text-yellow-600">
                     {securitySettings?.authentication?.passwordPolicy?.status || 'Strong'}
                   </Badge>
                 </div>
@@ -2221,7 +2221,7 @@ export default function AdminDashboard() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span>API Rate Limiting</span>
-                  <Badge variant="outline" className="text-green-600">
+                  <Badge variant="outline" className="text-yellow-600">
                     {securitySettings?.accessControl?.apiRateLimiting?.status || 'Active'}
                   </Badge>
                 </div>
@@ -2233,13 +2233,13 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Audit Logging</span>
-                  <Badge variant="outline" className="text-green-600">
+                  <Badge variant="outline" className="text-yellow-600">
                     {securitySettings?.accessControl?.auditLogging?.status || 'Enabled'}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Data Encryption</span>
-                  <Badge variant="outline" className="text-green-600">
+                  <Badge variant="outline" className="text-yellow-600">
                     {securitySettings?.accessControl?.dataEncryption?.status || 'AES-256'}
                   </Badge>
                 </div>
@@ -2871,29 +2871,29 @@ export default function AdminDashboard() {
             {/* Group Management Section */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <UserCog className="h-5 w-5 text-green-600" />
+                <UserCog className="h-5 w-5 text-yellow-600" />
                 <h3 className="font-semibold text-lg">Group Management</h3>
               </div>
               <div className="space-y-2 pl-7">
-                <div className="p-3 bg-green-50 rounded border border-green-200">
+                <div className="p-3 bg-yellow-50 rounded border border-green-200">
                   <h4 className="font-medium text-sm mb-1">Create Groups</h4>
                   <p className="text-xs text-muted-foreground">
                     Organize users into teams or departments. Create groups with specific purposes (e.g., KYC Team, Property Managers, Finance Team).
                   </p>
                 </div>
-                <div className="p-3 bg-green-50 rounded border border-green-200">
+                <div className="p-3 bg-yellow-50 rounded border border-green-200">
                   <h4 className="font-medium text-sm mb-1">Manage Group Members</h4>
                   <p className="text-xs text-muted-foreground">
                     Add or remove members from groups. Assign individual permission levels to each group member independently.
                   </p>
                 </div>
-                <div className="p-3 bg-green-50 rounded border border-green-200">
+                <div className="p-3 bg-yellow-50 rounded border border-green-200">
                   <h4 className="font-medium text-sm mb-1">Member Permissions</h4>
                   <p className="text-xs text-muted-foreground">
                     Grant granular permissions per member within a group. Assign different permission levels to different members of the same team.
                   </p>
                 </div>
-                <div className="p-3 bg-green-50 rounded border border-green-200">
+                <div className="p-3 bg-yellow-50 rounded border border-green-200">
                   <h4 className="font-medium text-sm mb-1">Group Permissions</h4>
                   <p className="text-xs text-muted-foreground">
                     Set group-level permissions that apply to all members. Define what resources the group can access and what actions they can perform.
@@ -2999,7 +2999,7 @@ export default function AdminDashboard() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center justify-between">
                     <span>Two-Factor Authentication</span>
-                    <Badge className="text-green-600 bg-green-50" variant="outline">
+                    <Badge className="text-yellow-600 bg-yellow-50" variant="outline">
                       {securitySettings?.authentication?.twoFactorAuthentication?.enabled ? 'Enabled' : 'Disabled'}
                     </Badge>
                   </label>
@@ -3099,7 +3099,7 @@ export default function AdminDashboard() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center justify-between">
                     <span>Audit Logging</span>
-                    <Badge className="text-green-600 bg-green-50" variant="outline">
+                    <Badge className="text-yellow-600 bg-yellow-50" variant="outline">
                       {securitySettings?.accessControl?.auditLogging?.enabled ? 'Enabled' : 'Disabled'}
                     </Badge>
                   </label>
@@ -3108,7 +3108,7 @@ export default function AdminDashboard() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center justify-between">
                     <span>Data Encryption</span>
-                    <Badge variant="outline" className="text-green-600">
+                    <Badge variant="outline" className="text-yellow-600">
                       {securitySettings?.accessControl?.dataEncryption?.algorithm || 'AES-256'}
                     </Badge>
                   </label>

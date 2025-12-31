@@ -122,7 +122,7 @@ const PERMISSION_RESOURCES = [
   { category: "Finance", resources: ["finance:reports", "finance:investments"] },
   { category: "Operations", resources: ["operations:transactions"] },
   { category: "Properties", resources: ["properties:manage"] },
-  { category: "Users", resources: ["users:manage"] },
+  { category: "Users", resources: ["users:create", "users:edit", "users:deactivate"] },
   { category: "Withdrawals", resources: ["withdrawals"] },
   { category: "Documents", resources: ["documents:verify"] },
   { category: "Admin", resources: ["admin:groups", "admin:users"] },
